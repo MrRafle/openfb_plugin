@@ -14,6 +14,7 @@ export function showContextMenu(
   clientX: number,
   clientY: number,
   onDelete: () => void,
+  onGeneratePython?: () => void
 ): void {
   hideContextMenu();
 
@@ -55,6 +56,36 @@ export function showContextMenu(
     onDelete();
     hideContextMenu();
   });
+
+
+  // Generate Python Code
+  if (onGeneratePython) {
+    const separator = document.createElement("div");
+    separator.style.cssText = "height: 1px; background: #454545; margin: 4px 8px;";
+    menu.appendChild(separator);
+
+    const pyItem = document.createElement("div");
+    pyItem.textContent = "Generate Python Code";
+    pyItem.style.cssText = `
+      padding: 6px 24px;
+      cursor: pointer;
+      white-space: nowrap;
+    `;
+    pyItem.addEventListener("mouseenter", () => {
+      pyItem.style.background = "var(--vscode-menu-selectionBackground, #094771)";
+      pyItem.style.color = "var(--vscode-menu-selectionForeground, #ffffff)";
+    });
+    pyItem.addEventListener("mouseleave", () => {
+      pyItem.style.background = "transparent";
+      pyItem.style.color = "var(--vscode-menu-foreground, #cccccc)";
+    });
+    pyItem.addEventListener("click", () => {
+      onGeneratePython();
+      hideContextMenu();
+    });
+
+    menu.appendChild(pyItem);
+  }
 
   menu.appendChild(item);
   document.body.appendChild(menu);

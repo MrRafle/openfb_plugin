@@ -2,7 +2,7 @@
   "name": "openfb-plugin",
   "publisher": "RITMS",
   "displayName": "%displayName%",
-  "description": "%description%",  
+  "description": "%description%",
   "icon": "images/icon.png",
   "version": "0.1.5",
   "repository": {
@@ -19,6 +19,10 @@
       {
         "command": "openfb.plugin.showSysDiagram",
         "title": "%command.showSysDiagram%"
+      },
+      {
+        "command": "openfb.plugin.generatePythonCode",
+        "title": "OpenFB: Generate Python Code for Block"
       }
     ],
     "menus": {
@@ -27,6 +31,17 @@
           "when": "resourceFilename =~ /\\.sys$/",
           "command": "openfb.plugin.showSysDiagram",
           "group": "openfb@1"
+        },
+        {
+          "when": "resourceExtname == .fbt",
+          "command": "openfb.plugin.generatePythonCode",
+          "group": "openfb@2"
+        }
+      ],
+      "editor/context": [
+        {
+          "command": "openfb.plugin.generatePythonCode",
+          "when": "editorLangId == 'openfb-diagram'"
         }
       ]
     },
@@ -83,7 +98,7 @@
     "watch": "node scripts/build.mjs --watch"
   },
   "devDependencies": {
-    "@types/node": "^24.10.12",
+    "@types/node": "^24.13.2",
     "@types/vscode": "^1.85.0",
     "esbuild": "^0.25.1",
     "typescript": "^5.3.0"

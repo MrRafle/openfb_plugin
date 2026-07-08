@@ -293,6 +293,7 @@ export class CanvasInputManager {
   /**
    * Right-click context menu on canvas.
    * Shows "Удалить" option when clicking on a node or connection.
+   * Also shows "Generate Python Code" for blocks.
    */
   private onContextMenu = (e: MouseEvent) => {
     e.preventDefault();
@@ -304,9 +305,25 @@ export class CanvasInputManager {
     const clickedNode = this.findNodeAtPoint(worldPos.x, worldPos.y);
     if (clickedNode) {
       this.state.dispatch({ type: "SELECT_NODE", nodeId: clickedNode.id });
-      showContextMenu(e.clientX, e.clientY, () => {
-        this.state.dispatch({ type: "DELETE_NODE", nodeId: clickedNode.id });
-      });
+      showContextMenu(
+        e.clientX, 
+        e.clientY, 
+        () => {
+          this.state.dispatch({ type: "DELETE_NODE", nodeId: clickedNode.id });
+        },
+        () => {
+          // Generate Python Code
+          const blockType = (clickedNode as any).typeShort || 
+                            clickedNode.type || 
+                            clickedNode.id;
+
+          // Send message to extension host
+          this.state.sendMessage({
+            type: "generate-python",
+            blockType: blockType
+          });
+        }
+      );
       return;
     }
 
