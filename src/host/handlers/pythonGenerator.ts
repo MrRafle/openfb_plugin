@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import * as path from 'path';
 import { getLogger } from '../logging';
 import { FBTypeRegistry } from '../fbTypeRegistry';
+import { convertFbtToPython } from '../generation/fbtToPython';
 
 let extensionContext: vscode.ExtensionContext | null = null;
 
@@ -9,7 +10,6 @@ export function registerPythonGenerator(context: vscode.ExtensionContext) {
   extensionContext = context;
   const logger = getLogger();
 
-  // Команда для правой кнопки по .fbt файлу в проводнике
   const disposable = vscode.commands.registerCommand(
     "openfb.plugin.generatePythonCode",
     async (uri?: vscode.Uri) => {
@@ -35,50 +35,32 @@ export function registerPythonGenerator(context: vscode.ExtensionContext) {
 }
 
 /**
- * Генерация из .fbt (для explorer)
+ * Генерация Python из .fbt файла (для вызова из Explorer)
  */
 async function generatePythonFromFbtPath(fbtPath: string) {
   const logger = getLogger();
-  if (!extensionContext) {
-    vscode.window.showErrorMessage("Extension context not initialized");
-    return;
-  }
 
   try {
-    const pathModule = await import('path');
-    const childProcess = await import('child_process');
-    
-    const scriptPath = pathModule.join(extensionContext.extensionPath, 'scripts', 'fbt2py.py');
-    const command = `python "${scriptPath}" "${fbtPath}"`;
+    const pyPath = await convertFbtToPython(fbtPath);
 
-    childProcess.exec(command, (error: any, stdout: string, stderr: string) => {
-      if (error) {
-        logger.error("Python generation failed", error);
-        vscode.window.showErrorMessage(`Generation failed: ${error.message}`);
-        return;
+    vscode.window.showInformationMessage(
+      `Python code generated: ${pyPath}`,
+      "Open File"
+    ).then((selection) => {
+      if (selection === "Open File") {
+        vscode.commands.executeCommand("vscode.open", vscode.Uri.file(pyPath));
       }
-
-      logger.info("Python generation output:", stdout);
-      const pyPath = fbtPath.replace(/\.fbt$/i, '.py');
-      
-      vscode.window.showInformationMessage(
-        `Python code generated: ${pyPath}`,
-        "Open File"
-      ).then((selection) => {
-        if (selection === "Open File") {
-          vscode.commands.executeCommand("vscode.open", vscode.Uri.file(pyPath));
-        }
-      });
     });
 
   } catch (err: any) {
-    logger.error("Failed to start Python generator", err);
-    vscode.window.showErrorMessage("Failed to run Python generator");
+    logger.error("Failed to generate Python", err);
+    vscode.window.showErrorMessage(`Failed to generate Python: ${err.message}`);
   }
 }
 
 /**
  * Handler для правого клика по блоку в диаграмме
+ * Генерирует .py рядом с текущим .sys файлом
  */
 export async function handleGeneratePython(m: any, ctx: any) {
   const logger = getLogger();
@@ -89,14 +71,10 @@ export async function handleGeneratePython(m: any, ctx: any) {
     return true;
   }
 
-  if (!extensionContext) {
-    vscode.window.showErrorMessage("Extension context not initialized");
-    return true;
-  }
-
   logger.info(`Generate Python requested for block: ${blockType}`);
 
   try {
+    // Поиск .fbt файла
     const registry = new FBTypeRegistry(ctx.shared?.searchPaths || []);
     let info = registry.get(blockType);
 
@@ -114,46 +92,23 @@ export async function handleGeneratePython(m: any, ctx: any) {
     const fbtPath = info.filePath;
     logger.info(`Found .fbt: ${fbtPath}`);
 
-    // Генерируем .py РЯДОМ С .sys
+    // Генерируем .py РЯДОМ С .sys файлом
     const sysDir = path.dirname(ctx.uri.fsPath);
-    const targetPyPath = path.join(sysDir, `${blockType}.py`);
 
-    const pathModule = await import('path');
-    const childProcess = await import('child_process');
-    
-    const scriptPath = pathModule.join(extensionContext.extensionPath, 'scripts', 'fbt2py.py');
-    const command = `python "${scriptPath}" "${fbtPath}"`;
+    const pyPath = await convertFbtToPython(fbtPath, sysDir);
 
-    childProcess.exec(command, (error: any, stdout: string, stderr: string) => {
-      if (error) {
-        logger.error("Python generation failed", error);
-        vscode.window.showErrorMessage(`Generation failed: ${error.message}`);
-        return;
+    vscode.window.showInformationMessage(
+      `Python code generated: ${pyPath}`,
+      "Open File"
+    ).then((selection) => {
+      if (selection === "Open File") {
+        vscode.commands.executeCommand("vscode.open", vscode.Uri.file(pyPath));
       }
-
-      logger.info("fbt2py output:", stdout);
-
-      const fs = require('fs');
-      const originalPy = fbtPath.replace(/\.fbt$/i, '.py');
-
-      if (fs.existsSync(originalPy)) {
-        fs.copyFileSync(originalPy, targetPyPath);
-        logger.info(`Python file saved next to .sys: ${targetPyPath}`);
-      }
-
-      vscode.window.showInformationMessage(
-        `Python code generated: ${targetPyPath}`,
-        "Open File"
-      ).then((selection) => {
-        if (selection === "Open File") {
-          vscode.commands.executeCommand("vscode.open", vscode.Uri.file(targetPyPath));
-        }
-      });
     });
 
   } catch (err: any) {
     logger.error("Failed to generate Python", err);
-    vscode.window.showErrorMessage("Failed to generate Python code");
+    vscode.window.showErrorMessage(`Failed to generate Python code: ${err.message}`);
   }
 
   return true;
