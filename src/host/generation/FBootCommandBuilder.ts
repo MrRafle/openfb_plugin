@@ -14,6 +14,13 @@ export class FBootCommandBuilder {
     return `;<Request ID="${id}" Action="CREATE"><FB Name="${resource.name}" Type="${escapedType}" /></Request>`;
   }
 
+private normalizeLiteral(value: string): string {
+  if (value.startsWith("'") && value.endsWith("'") && value.length >= 2) {
+    return value.slice(1, -1);
+  }
+
+  return value.replace(/^(string#)'(.*)'$/i, "$1$2");
+}
   /**
    * Builds CREATE command for FB with optional OpcMapping content.
    */
@@ -44,7 +51,7 @@ export class FBootCommandBuilder {
     id: number,
     resourceName: string,
   ): string {
-    const escapedValue = escapeXml(value);
+    const escapedValue = escapeXml(this.normalizeLiteral(value));
     const destination = `${qualifiedName}.${paramName}`;
     return `${resourceName};<Request ID="${id}" Action="WRITE"><Connection Source="${escapedValue}" Destination="${destination}" /></Request>`;
   }
@@ -58,7 +65,7 @@ export class FBootCommandBuilder {
     id: number,
     resourceName: string,
   ): string {
-    const escapedValue = escapeXml(value);
+    const escapedValue = escapeXml(this.normalizeLiteral(value));
     return `${resourceName};<Request ID="${id}" Action="WRITE"><Connection Source="${escapedValue}" Destination="${destination}" /></Request>`;
   }
 
