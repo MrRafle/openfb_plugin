@@ -9,6 +9,7 @@ import type { Logger } from "./logging";
 import type { NormParams } from "./parsing/sysPatcher";
 import { readSettingsFromVsCodeConfig } from "./settingsManager";
 import { t } from "../shared/i18n";
+import { handleGeneratePython } from "./handlers/pythonGenerator";
 
 /**
  * Shared context available to every message handler.
@@ -46,7 +47,8 @@ export type WebviewMessage =
   | { type: "request-all-fb-types" }
   | { type: "dirty-state-changed"; isDirty?: boolean }
   | { type: "webview-log"; level?: string; message?: string; args?: string[] }
-  | { type: "create-fb-type"; payload?: unknown };
+  | { type: "create-fb-type"; payload?: unknown }
+  | { type: "generate-python"; payload?: unknown };
 
 /**
  * Route a single webview message to the appropriate handler.
@@ -78,6 +80,8 @@ export async function routeWebviewMessage(m: WebviewMessage, ctx: MessageContext
       return handleWebviewLog(m, ctx);
     case "create-fb-type":
       return handleCreateFbType(m, ctx);
+    case "generate-python":
+      return handleGeneratePython(m, ctx);
     default:
       return false;
   }

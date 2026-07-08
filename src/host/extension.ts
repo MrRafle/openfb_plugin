@@ -2,6 +2,7 @@ import * as vscode from "vscode";
 import { setResponsesChannel } from "./deploy/handler";
 import { initializeLogger, getLogger } from "./logging";
 import { openSysDiagramPanel } from "./panelManager";
+import { registerPythonGenerator } from './handlers/pythonGenerator';
 
 // Store subscriptions for cleanup on deactivation
 const extensionSubscriptions: vscode.Disposable[] = [];
@@ -23,6 +24,8 @@ export function activate(context: vscode.ExtensionContext) {
 
   context.subscriptions.push(commandDisposable);
   extensionSubscriptions.push(commandDisposable);
+
+  registerPythonGenerator(context);
 }
 
 /**

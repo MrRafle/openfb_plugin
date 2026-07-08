@@ -106,6 +106,17 @@ export class EditorState implements EditorStore {
   }
 
   /**
+   * Send message to the VS Code extension host
+   */
+  public sendMessage(msg: unknown): void {
+    if (this.postMessageFn) {
+      this.postMessageFn(msg);
+    } else {
+      console.warn("[EditorState] postMessageFn is not set");
+    }
+  }
+
+  /**
    * Get stored normalization parameters (for reverse transform on save).
    */
   public getNormParams(): { minX: number; minY: number; scale: number; offsetX: number; offsetY: number } | undefined {
