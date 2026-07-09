@@ -152,7 +152,7 @@ setupCanvasDnd({
     const rect = canvas.getBoundingClientRect();
     const screenX = event.clientX - rect.left;
     const screenY = event.clientY - rect.top;
-    const worldPos = screenToWorld(canvas, renderer.camera, state.view.zoom, screenX, screenY, renderer.dpr);
+    const worldPos = screenToWorld(canvas,renderer.camera,state.view.zoom,screenX, screenY);
 
     state.addNode(blockType, worldPos.x, worldPos.y);
   },

@@ -2,10 +2,6 @@ import { EditorState } from "../editorState";
 import { CanvasRenderer } from "../rendering/canvasRenderer";
 import { ZOOM_CONFIG } from "../constants";
 
-/**
- * Manages camera viewport transformations: panning and zooming
- * Single Responsibility: Viewport/Camera manipulation
- */
 export class ViewportController {
   private isPanning = false;
   private panStartX = 0;
@@ -16,25 +12,16 @@ export class ViewportController {
     private renderer: CanvasRenderer
   ) {}
 
-  /**
-   * Check if panning is active
-   */
   isPanningActive(): boolean {
     return this.isPanning;
   }
 
-  /**
-   * Start panning operation
-   */
   startPanning(e: MouseEvent): void {
     this.isPanning = true;
     this.panStartX = e.clientX;
     this.panStartY = e.clientY;
   }
 
-  /**
-   * Update pan position based on mouse movement
-   */
   updatePan(e: MouseEvent): void {
     if (!this.isPanning) return;
 
@@ -49,31 +36,15 @@ export class ViewportController {
     this.panStartY = e.clientY;
   }
 
-  /**
-   * End panning operation
-   */
   stopPanning(): void {
     this.isPanning = false;
   }
 
-  /**
-   * Handle zoom with wheel event
-   * Zooms in/out centered on the mouse position
-   * 
-   * @param delta - Wheel delta (negative = zoom in, positive = zoom out)
-   * @param screenX - Mouse X position in screen coordinates (relative to canvas)
-   * @param screenY - Mouse Y position in screen coordinates (relative to canvas)
-   */
   handleZoom(delta: number, screenX: number, screenY: number): void {
-    // Calculate zoom factor based on wheel delta
-    // Negative delta = scroll up = zoom in (factor > 1)
-    // Positive delta = scroll down = zoom out (factor < 1)
-    const zoomFactor = delta > 0 
-      ? 1 - ZOOM_CONFIG.STEP 
+    const zoomFactor = delta > 0
+      ? 1 - ZOOM_CONFIG.STEP
       : 1 + ZOOM_CONFIG.STEP;
 
-    // Dispatch ZOOM action
-    // Reducer will handle clamping and offset adjustment
     this.state.dispatch({
       type: "ZOOM",
       factor: zoomFactor,
@@ -83,7 +54,6 @@ export class ViewportController {
       canvasCenterY: this.renderer.logicalHeight / 2
     });
 
-    // Sync camera with updated state so next pan doesn't jump
     this.renderer.camera.offsetX = this.state.view.offsetX;
     this.renderer.camera.offsetY = this.state.view.offsetY;
   }

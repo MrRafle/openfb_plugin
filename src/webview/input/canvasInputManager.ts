@@ -61,7 +61,7 @@ export class CanvasInputManager {
     const screenX = e.clientX - rect.left;
     const screenY = e.clientY - rect.top;
 
-    return screenToWorld(this.canvas, this.renderer.camera, this.state.view.zoom, screenX, screenY, this.renderer.dpr);
+    return screenToWorld(this.canvas,this.renderer.camera, this.state.view.zoom, screenX, screenY);
   };
 
   private onMouseDown = (e: MouseEvent) => {
@@ -72,11 +72,14 @@ export class CanvasInputManager {
       return;
     }
 
-    // Left mouse button for node dragging, node selection, or panning
-    if (e.button !== 0) return;
+     if (e.button !== 0) return;
 
-    // Get world coordinates to check for node selection
-    const worldPos = this.getMousePos(e);
+  const rect = this.canvas.getBoundingClientRect();
+  const screenX = e.clientX - rect.left;
+  const screenY = e.clientY - rect.top;
+  const worldPos = this.getMousePos(e);
+
+
 
     // Check port hit first (for connection creation)
     const hitPort = this.findPortAtPoint(worldPos.x, worldPos.y);
