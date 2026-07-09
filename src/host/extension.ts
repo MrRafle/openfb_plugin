@@ -3,6 +3,7 @@ import { setResponsesChannel } from "./deploy/handler";
 import { initializeLogger, getLogger } from "./logging";
 import { openSysDiagramPanel } from "./panelManager";
 import { registerPythonGenerator } from './handlers/pythonGenerator';
+import { registerCreateSysProjectCommand } from "./handlers/createSysProjectHandler";
 
 // Store subscriptions for cleanup on deactivation
 const extensionSubscriptions: vscode.Disposable[] = [];
@@ -26,6 +27,7 @@ export function activate(context: vscode.ExtensionContext) {
   extensionSubscriptions.push(commandDisposable);
 
   registerPythonGenerator(context);
+  registerCreateSysProjectCommand(context);
 }
 
 /**
