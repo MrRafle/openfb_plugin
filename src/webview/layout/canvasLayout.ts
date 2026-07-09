@@ -19,9 +19,8 @@ export function createCanvasLayout(deps: CanvasLayoutDeps) {
     const toolbarHeight = toolbar ? toolbar.offsetHeight : 0;
     const cssHeight = Math.max(0, window.innerHeight - toolbarHeight);
 
-    renderer.applyDpr(cssWidth, cssHeight);
-
-    logger.debug(`Canvas resized to ${cssWidth}x${cssHeight} (toolbar ${toolbarHeight}px, dpr=${renderer.dpr})`);
+    renderer.resize(cssWidth, cssHeight);
+    logger.debug(`Canvas resized to ${cssWidth}x${cssHeight} (toolbar ${toolbarHeight}px)`);
     renderer.render(state);
   }
 
