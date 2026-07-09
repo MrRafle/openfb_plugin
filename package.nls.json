@@ -2,6 +2,7 @@
   "displayName": "OpenFB Plugin",
   "description": "Edits an IEC 61499 project diagram based on .sys file, fbt elements and deploys it to PLC",
   "command.showSysDiagram": "OpenFB: Open Project Diagram",
+  "command.createSysProject": "OpenFB: Create SYS Project",
   "config.title": "OpenFB",
   "config.fbLibraryPaths": "Paths to search for .fbt function block libraries",
   "config.host": "Host/IP address of openFB runtime server",

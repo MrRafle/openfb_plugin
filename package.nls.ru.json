@@ -2,6 +2,7 @@
   "displayName": "OpenFB Плагин",
   "description": "Редактирует диаграмму IEC 61499 проекта на основе .sys файла, fbt элементы и загружает проект в ПЛК",
   "command.showSysDiagram": "OpenFB: Открыть диаграмму проекта",
+  "command.createSysProject": "OpenFB: Создать SYS проект",
   "config.title": "OpenFB",
   "config.fbLibraryPaths": "Пути для поиска библиотек функциональных блоков .fbt",
   "config.host": "Хост/IP-адрес сервера openFB runtime",

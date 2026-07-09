@@ -58,10 +58,16 @@ export function patchSysFile(originalPath: string, opts: PatchOptions): string {
     throw new Error("patchSysFile: no <Application> in original XML");
   }
 
-  const network = app.SubAppNetwork;
-  if (!network) {
-    throw new Error("patchSysFile: no <SubAppNetwork> in original XML");
-  }
+  console.log("patchSysFile originalPath:", originalPath);
+  console.log("patchSysFile app:", JSON.stringify(app, null, 2));
+  console.log("patchSysFile app keys:", Object.keys(app || {}));
+
+  const network =
+  app.SubAppNetwork && typeof app.SubAppNetwork === "object"
+    ? app.SubAppNetwork
+    : {};
+
+  app.SubAppNetwork = network;
 
   const { model, nodes, normParams } = opts;
 

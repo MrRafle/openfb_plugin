@@ -5,25 +5,35 @@ import type { WebviewMessage, MessageContext } from "../messageRouter";
 import { readSettingsFromVsCodeConfig } from "../settingsManager";
 import { t } from "../../shared/i18n";
 
-export async function handleSaveSys(m: WebviewMessage & { type: "save-sys" }, ctx: MessageContext): Promise<boolean> {
+export async function handleSaveSys(
+  m: WebviewMessage & { type: "save-sys" },
+  ctx: MessageContext,
+): Promise<boolean> {
   try {
     const updatedModel = m.model;
     if (!updatedModel) {
       ctx.logger.warn("save-sys: no model in message");
-      ctx.panel.webview.postMessage({ type: "save-sys-result", payload: { success: false, error: t(readSettingsFromVsCodeConfig().uiLanguage, "saveSys.noModel") } });
+      ctx.panel.webview.postMessage({
+        type: "save-sys-result",
+        payload: {
+          success: false,
+          error: t(readSettingsFromVsCodeConfig().uiLanguage, "saveSys.noModel"),
+        },
+      });
       return true;
     }
 
     const nodes: Array<{ id: string; x: number; y: number }> = m.nodes || [];
     const normParams = m.normParams;
 
-    // Ensure all blocks have a mapping entry
+    // Ensure all blocks have a mapping entry.
     const appName = updatedModel.applicationName || "App";
     if (updatedModel.subAppNetwork?.blocks && updatedModel.devices?.length > 0) {
       const mappings = updatedModel.mappings || [];
       const mappedInstances = new Set(mappings.map((mp) => mp.fbInstance));
       const defaultDevice = updatedModel.devices[0].name || "FORTE_PC";
-      const defaultResource = updatedModel.devices[0].resources?.[0]?.name || "EMB_RES";
+      const defaultResource =
+        updatedModel.devices[0].resources?.[0]?.name || "EMB_RES";
 
       for (const block of updatedModel.subAppNetwork.blocks) {
         const qualifiedName = `${appName}.${block.id}`;
@@ -33,9 +43,12 @@ export async function handleSaveSys(m: WebviewMessage & { type: "save-sys" }, ct
             device: defaultDevice,
             resource: defaultResource,
           });
-          ctx.logger.info(`Auto-mapped new block "${qualifiedName}" -> ${defaultDevice}.${defaultResource}`);
+          ctx.logger.info(
+            `Auto-mapped new block "${qualifiedName}" -> ${defaultDevice}.${defaultResource}`,
+          );
         }
       }
+
       updatedModel.mappings = mappings;
     }
 
@@ -45,29 +58,38 @@ export async function handleSaveSys(m: WebviewMessage & { type: "save-sys" }, ct
       normParams,
     });
 
-    const defaultUri = vscode.Uri.file(
-      ctx.uri.fsPath.replace(/\.sys$/i, "_new.sys")
+    fs.writeFileSync(ctx.uri.fsPath, xml, "utf8");
+
+    ctx.logger.info("SYS file saved to", ctx.uri.fsPath);
+
+    vscode.window.showInformationMessage(
+      t(readSettingsFromVsCodeConfig().uiLanguage, "saveSys.saved", {
+        path: ctx.uri.fsPath,
+      }),
     );
 
-    const saveUri = await vscode.window.showSaveDialog({
-      defaultUri,
-      filters: { "IEC 61499 System": ["sys"] },
-      title: t(readSettingsFromVsCodeConfig().uiLanguage, "saveSys.dialogTitle"),
+    ctx.panel.webview.postMessage({
+      type: "save-sys-result",
+      payload: {
+        success: true,
+        filePath: ctx.uri.fsPath,
+      },
     });
-
-    if (!saveUri) {
-      ctx.logger.info("Save cancelled by user");
-      return true;
-    }
-
-    fs.writeFileSync(saveUri.fsPath, xml, "utf8");
-    ctx.logger.info("SYS file saved to", saveUri.fsPath);
-    vscode.window.showInformationMessage(t(readSettingsFromVsCodeConfig().uiLanguage, "saveSys.saved", { path: saveUri.fsPath }));
-    ctx.panel.webview.postMessage({ type: "save-sys-result", payload: { success: true, filePath: saveUri.fsPath } });
   } catch (err) {
     ctx.logger.error("Failed to save SYS file", err);
-    vscode.window.showErrorMessage(t(readSettingsFromVsCodeConfig().uiLanguage, "saveSys.saveFailed", { error: String(err) }));
-    ctx.panel.webview.postMessage({ type: "save-sys-result", payload: { success: false, error: String(err) } });
+    vscode.window.showErrorMessage(
+      t(readSettingsFromVsCodeConfig().uiLanguage, "saveSys.saveFailed", {
+        error: String(err),
+      }),
+    );
+    ctx.panel.webview.postMessage({
+      type: "save-sys-result",
+      payload: {
+        success: false,
+        error: String(err),
+      },
+    });
   }
+
   return true;
 }
