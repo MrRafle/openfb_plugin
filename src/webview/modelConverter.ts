@@ -107,24 +107,42 @@ export function convertDiagramToEditorGraph(
     ...(diagram.subAppNetwork.subApps || []),
   ];
 
-  // Build set of mapped resource-level block targets to avoid duplication
-  // (Only show application-level blocks; resource-level blocks are implementation detail)
+  // Build set of mapped resource targets (Device.Resource) to avoid duplication
   const mappedResourceTargets = new Set<string>();
+  const mappedBlockIds = new Set<string>(); // Track which blocks are mapped
+
   for (const mapping of diagram.mappings || []) {
-    // Store full target path (e.g., "FORTE_PC.EMB_RES.OUT_ANY_CONSOLE")
+    // mapping.target is "Device.Resource" (e.g., "FORTE_PC.EMB_RES")
     if (mapping.target) {
       mappedResourceTargets.add(mapping.target);
+    }
+    // Also track the block ID that is mapped
+    if (mapping.fbInstance) {
+      mappedBlockIds.add(mapping.fbInstance);
     }
   }
 
   // Add resource-level blocks only if they're NOT already shown via application-level mapping
   for (const device of diagram.devices || []) {
     for (const resource of device.resources || []) {
+      const deviceResourceKey = `${device.name}.${resource.name}`;
+      
       for (const block of resource.blocks || []) {
-        const isStartBlock = block.id.toUpperCase().endsWith(".START") || block.id.toUpperCase() === "START" || block.typeShort?.toUpperCase() === "E_RESTART";
-        const qualifiedId = `${device.name}.${resource.name}.${block.id}`;
-        const isMappedToApp = mappedResourceTargets.has(qualifiedId);
-        if (!isStartBlock && !isMappedToApp) {
+        const isStartBlock = block.id.toUpperCase().endsWith(".START") || 
+                            block.id.toUpperCase() === "START" || 
+                            block.typeShort?.toUpperCase() === "E_RESTART";
+        
+        // Skip START blocks - they are virtual
+        if (isStartBlock) continue;
+        
+        // Check if this block is already shown via mapping
+        // A block is mapped if its qualified name (App.BlockId) is in mappings
+        const qualifiedId = `${diagram.applicationName}.${block.id}`;
+        const isMappedToApp = mappedBlockIds.has(qualifiedId) || 
+                            mappedBlockIds.has(block.id) ||
+                            mappedResourceTargets.has(deviceResourceKey);
+        
+        if (!isMappedToApp) {
           diagramBlocks.push({
             ...block,
             source: "resource",
@@ -136,7 +154,10 @@ export function convertDiagramToEditorGraph(
   }
 
   // Always add START as built-in system node
-  const existingStartNode = diagramBlocks.find((b) => b.id.toUpperCase().endsWith(".START") || b.id.toUpperCase() === "START");
+  const existingStartNode = diagramBlocks.find((b) => 
+    b.id.toUpperCase().endsWith(".START") || 
+    b.id.toUpperCase() === "START"
+  );
   if (!existingStartNode) {
     const startNode = {
       id: "START",
@@ -277,7 +298,13 @@ export function convertDiagramToEditorGraph(
   );
   logger.info(`Auto-fit zoom: ${initialZoom.toFixed(3)} (diagram: ${boundsWidth.toFixed(0)}×${boundsHeight.toFixed(0)})`);
 
-  const mappedConnections = (diagram.subAppNetwork.connections || []).map((c) => {
+  const mappedConnections = (diagram.subAppNetwork.connections || [])
+    .filter(c => {
+      // Exclude START connections - they should only come from resource.connections
+      const fromBlock = c.fromBlock || "";
+      return fromBlock !== "START" && !fromBlock.toUpperCase().endsWith(".START");
+    })
+    .map(c => {
     const editorConn = {
       id: `${c.fromBlock}.${c.fromPort}->${c.toBlock}.${c.toPort}`,
       fromPortId: `${c.fromBlock}.${c.fromPort}`,
@@ -288,9 +315,32 @@ export function convertDiagramToEditorGraph(
     return editorConn;
   });
 
+  // Collect resource-level connections (START connections)
+const resourceConnections: EditorConnection[] = [];
+for (const device of diagram.devices || []) {
+  for (const resource of device.resources || []) {
+    if (resource.connections) {
+      for (const c of resource.connections) {
+        // Only add connections from START (virtual source)
+        if (c.fromBlock === "START" || c.fromBlock.toUpperCase().endsWith(".START")) {
+          resourceConnections.push({
+            id: `${c.fromBlock}.${c.fromPort}->${c.toBlock}.${c.toPort}`,
+            fromPortId: `${c.fromBlock}.${c.fromPort}`,
+            toPortId: `${c.toBlock}.${c.toPort}`,
+            type: c.type,
+          });
+        }
+      }
+    }
+  }
+}
+
+// Combine all connections
+const allConnections = [...mappedConnections, ...resourceConnections];
+
   return {
     nodes: rawNodes,
-    connections: mappedConnections,
+    connections: allConnections,
     normParams,
     initialZoom,
   };
