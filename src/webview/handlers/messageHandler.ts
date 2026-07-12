@@ -194,7 +194,14 @@ function handleSaveSysResult(event: MessageEvent<ExtensionMessage>, deps: Messag
   const result = event.data.payload as { success?: boolean; filePath?: string; error?: string } | undefined;
   if (result?.success) {
     deps.logger.info("File saved successfully:", result.filePath);
+    if (result.filePath) {
+      (window as Window & { __openfbTargetPath?: string }).__openfbTargetPath = result.filePath;
+    }
     deps.state.dispatch({ type: "RESET_DIRTY" });
+    if (deps.state.model) {
+      deps.state.loadFromDiagram(deps.state.model, deps.state.fbTypes || new Map());
+      deps.centerDiagramInCanvas();
+    }
   } else {
     const error = result?.error || tr("saveSys.unknownError");
     deps.logger.error("Save failed:", error);

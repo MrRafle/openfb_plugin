@@ -1,5 +1,6 @@
 import * as vscode from "vscode";
 import * as fs from "fs";
+import * as path from "path";
 import { patchSysFile } from "../parsing/sysPatcher";
 import type { WebviewMessage, MessageContext } from "../messageRouter";
 import { readSettingsFromVsCodeConfig } from "../settingsManager";
@@ -25,6 +26,36 @@ export async function handleSaveSys(
 
     const nodes: Array<{ id: string; x: number; y: number }> = m.nodes || [];
     const normParams = m.normParams;
+    const requestedTargetPath = m.targetPath?.trim();
+    const targetUri = requestedTargetPath ? vscode.Uri.file(requestedTargetPath) : undefined;
+    let savePath = targetUri?.fsPath || ctx.uri.fsPath;
+    const sourcePath = ctx.uri.fsPath || savePath;
+
+    if (!requestedTargetPath && ctx.uri.fsPath) {
+      const selected = await vscode.window.showSaveDialog({
+        defaultUri: ctx.uri,
+        filters: { "IEC 61499 System": ["sys"] },
+        saveLabel: "Save",
+        title: "Save SYS As",
+      });
+      if (!selected) {
+        ctx.logger.info("Save cancelled by user");
+        return true;
+      }
+      savePath = selected.fsPath;
+      ctx.uri = selected;
+      ctx.panel.title = path.parse(savePath).name;
+      ctx.shared.model = updatedModel;
+    }
+
+    const nodePositionMap = new Map(nodes.map((n) => [n.id, { x: n.x, y: n.y }]));
+    for (const block of updatedModel.subAppNetwork?.blocks || []) {
+      const pos = nodePositionMap.get(block.id);
+      if (pos) {
+        block.x = pos.x;
+        block.y = pos.y;
+      }
+    }
 
     // Ensure all blocks have a mapping entry.
     const appName = updatedModel.applicationName || "App";
@@ -52,27 +83,42 @@ export async function handleSaveSys(
       updatedModel.mappings = mappings;
     }
 
-    const xml = patchSysFile(ctx.uri.fsPath, {
+    const xml = patchSysFile(sourcePath, {
       model: updatedModel,
       nodes,
       normParams,
     });
 
-    fs.writeFileSync(ctx.uri.fsPath, xml, "utf8");
+    const parentDir = path.dirname(savePath);
+    if (parentDir && !fs.existsSync(parentDir)) {
+      fs.mkdirSync(parentDir, { recursive: true });
+    }
 
-    ctx.logger.info("SYS file saved to", ctx.uri.fsPath);
+    fs.writeFileSync(savePath, xml, "utf8");
+
+    ctx.uri = vscode.Uri.file(savePath);
+    ctx.panel.title = path.parse(savePath).name;
+    ctx.shared.model = updatedModel;
+
+    ctx.logger.info("SYS file saved to", savePath);
 
     vscode.window.showInformationMessage(
       t(readSettingsFromVsCodeConfig().uiLanguage, "saveSys.saved", {
-        path: ctx.uri.fsPath,
+        path: savePath,
       }),
     );
+
+    ctx.panel.webview.postMessage({
+      type: "load-diagram",
+      payload: updatedModel,
+      fbTypes: Array.from(ctx.shared.fbTypeMap.entries()),
+    });
 
     ctx.panel.webview.postMessage({
       type: "save-sys-result",
       payload: {
         success: true,
-        filePath: ctx.uri.fsPath,
+        filePath: savePath,
       },
     });
   } catch (err) {

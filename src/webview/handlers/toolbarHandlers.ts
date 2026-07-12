@@ -4,6 +4,12 @@ interface HostApi {
   postMessage(message: unknown): void;
 }
 
+declare global {
+  interface Window {
+    __openfbTargetPath?: string;
+  }
+}
+
 interface ToolbarHandlersDeps {
   logger: WebviewLogger;
   vscode?: HostApi;
@@ -50,31 +56,49 @@ export function setupToolbarHandlers(deps: ToolbarHandlersDeps): void {
   bindCallbackButton("createBlockBtn", openNewFBDialog);
   bindCallbackButton("addBlockBtn", openPalettePanel);
 
+  const saveCurrentDiagram = () => {
+    logger.debug("Saving current diagram");
+    try {
+      if (vscode) {
+        const saveData = getSaveData();
+        if (!saveData) {
+          logger.warn("No model available for saving");
+          return;
+        }
+        const targetPath = window.__openfbTargetPath;
+        vscode.postMessage({
+          type: "save-sys",
+          model: saveData.model,
+          nodes: saveData.nodes,
+          normParams: saveData.normParams,
+          targetPath,
+        });
+      } else {
+        logger.warn("vscode.postMessage not available for save");
+      }
+    } catch (err) {
+      logger.error("Failed to post save-sys message", err);
+    }
+  };
+
   const saveAsBtn = document.getElementById("saveAsBtn") as HTMLButtonElement | null;
   if (saveAsBtn) {
     saveAsBtn.addEventListener("click", () => {
       logger.debug("Save As button clicked");
-      try {
-        if (vscode) {
-          const saveData = getSaveData();
-          if (!saveData) {
-            logger.warn("No model available for saving");
-            return;
-          }
-          vscode.postMessage({
-            type: "save-sys",
-            model: saveData.model,
-            nodes: saveData.nodes,
-            normParams: saveData.normParams,
-          });
-        } else {
-          logger.warn("vscode.postMessage not available for save");
-        }
-      } catch (err) {
-        logger.error("Failed to post save-sys message", err);
-      }
+      saveCurrentDiagram();
     });
   } else {
     logger.warn("saveAsBtn button not found in DOM");
   }
+
+  window.addEventListener("keydown", (event: KeyboardEvent) => {
+    const isSaveShortcut = (event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "s";
+    if (!isSaveShortcut) {
+      return;
+    }
+
+    event.preventDefault();
+    event.stopPropagation();
+    saveCurrentDiagram();
+  });
 }
