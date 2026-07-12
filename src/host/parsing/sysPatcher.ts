@@ -67,6 +67,12 @@ export function patchSysFile(originalPath: string, opts: PatchOptions): string {
     ? app.SubAppNetwork
     : {};
 
+  // Очистка вложенных SubAppNetwork
+  if (network.SubAppNetwork) {
+    console.log("[patchSysFile] Removing nested SubAppNetwork");
+    delete network.SubAppNetwork;
+  }
+
   app.SubAppNetwork = network;
 
   const { model, nodes, normParams } = opts;
@@ -137,8 +143,7 @@ export function patchSysFile(originalPath: string, opts: PatchOptions): string {
   network.FB = survivingBlocks.length > 0 ? survivingBlocks : undefined;
 
   // Patch connections 
-
-  patchConnections(network, model.subAppNetwork.connections || []);
+  patchConnections(network, model);
 
   // Patch mappings 
   // Build set of model mapping keys (From values)
@@ -159,6 +164,7 @@ export function patchSysFile(originalPath: string, opts: PatchOptions): string {
   }
   system.Mapping = xmlMappings.length > 0 ? xmlMappings : undefined;
 
+  patchResourceConnections(system, model);
 
   const builder = new XMLBuilder({
     ignoreAttributes: false,
@@ -244,81 +250,86 @@ function formatEndpoint(block: string, port: string): string {
   return `${block}.${port}`;
 }
 
-function patchConnections(
-  network: any,
-  modelConnections: Array<{
-    fromBlock: string;
-    fromPort: string;
-    toBlock: string;
-    toPort: string;
-    type?: "event" | "data";
-  }>,
-): void {
-  // Build set of model connections as "Source->Destination" keys, split by type
-  const modelEventKeys = new Set<string>();
-  const modelDataKeys = new Set<string>();
-  for (const mc of modelConnections) {
-    const src = formatEndpoint(mc.fromBlock, mc.fromPort);
-    const dst = formatEndpoint(mc.toBlock, mc.toPort);
-    const key = `${src}->${dst}`;
-    if (mc.type === "event") {
-      modelEventKeys.add(key);
-    } else if (mc.type === "data") {
-      modelDataKeys.add(key);
+
+function patchConnections(network: any, model: SysModel): void {
+  console.log("[patchConnections] START, network type:", typeof network);
+  console.log("[patchConnections] network keys:", Object.keys(network));
+  
+  // network - это уже SubAppNetwork объект, работаем с ним напрямую
+  let xmlConnections = asArray(network.EventConnections?.Connection || []);
+  console.log("[patchConnections] Before filter, xmlConnections:", xmlConnections);
+  
+  // Фильтруем START связи - они должны быть только в Resource
+  xmlConnections = xmlConnections.filter((c: any) => {
+    const source = c.Source || "";
+    return !source.startsWith("START.") && !source.includes(".START.");
+  });
+  console.log("[patchConnections] After filter, xmlConnections:", xmlConnections);
+  
+  // Добавляем только не-START связи из модели
+  const modelConnections = (model.subAppNetwork.connections || [])
+    .filter(c => {
+      const fromBlock = c.fromBlock || "";
+      return fromBlock !== "START" && !fromBlock.toUpperCase().endsWith(".START");
+    })
+    .map(c => ({
+      Source: `${c.fromBlock}.${c.fromPort}`,
+      Destination: `${c.toBlock}.${c.toPort}`,
+    }));
+  console.log("[patchConnections] modelConnections to add:", modelConnections);
+  
+  // Дедупликация
+  const existingKeys = new Set(xmlConnections.map((c: any) => `${c.Source}->${c.Destination}`));
+  for (const conn of modelConnections) {
+    const key = `${conn.Source}->${conn.Destination}`;
+    if (!existingKeys.has(key)) {
+      xmlConnections.push(conn);
+      existingKeys.add(key);
     }
   }
-
-  // Filter existing XML connections: keep only those still in the model
-  if (network.EventConnections) {
-    let eventConns = asArray(network.EventConnections.Connection);
-    eventConns = eventConns.filter((c: any) =>
-      c?.Source && c?.Destination && modelEventKeys.has(`${c.Source}->${c.Destination}`)
-    );
-    network.EventConnections.Connection = eventConns.length > 0 ? eventConns : undefined;
-    if (!network.EventConnections.Connection) delete network.EventConnections;
-  }
-  if (network.DataConnections) {
-    let dataConns = asArray(network.DataConnections.Connection);
-    dataConns = dataConns.filter((c: any) =>
-      c?.Source && c?.Destination && modelDataKeys.has(`${c.Source}->${c.Destination}`)
-    );
-    network.DataConnections.Connection = dataConns.length > 0 ? dataConns : undefined;
-    if (!network.DataConnections.Connection) delete network.DataConnections;
-  }
-
-  // Add new model connections that don't yet exist in XML
-  const existingEventConns = new Set<string>();
-  const existingDataConns = new Set<string>();
-  for (const conn of asArray(network.EventConnections?.Connection)) {
-    if (conn?.Source && conn?.Destination) {
-      existingEventConns.add(`${conn.Source}->${conn.Destination}`);
+  
+  console.log("[patchConnections] Final xmlConnections:", xmlConnections);
+  
+  // Обновляем network напрямую
+  if (xmlConnections.length > 0) {
+    if (!network.EventConnections) {
+      network.EventConnections = {};
     }
+    network.EventConnections.Connection = xmlConnections;
+  } else {
+    delete network.EventConnections;
   }
-  for (const conn of asArray(network.DataConnections?.Connection)) {
-    if (conn?.Source && conn?.Destination) {
-      existingDataConns.add(`${conn.Source}->${conn.Destination}`);
-    }
-  }
+  
+  console.log("[patchConnections] END, network.EventConnections:", JSON.stringify(network.EventConnections));
+}
 
-  for (const mc of modelConnections) {
-    const src = formatEndpoint(mc.fromBlock, mc.fromPort);
-    const dst = formatEndpoint(mc.toBlock, mc.toPort);
-    const key = `${src}->${dst}`;
-
-    if (mc.type === "event") {
-      if (!existingEventConns.has(key)) {
-        if (!network.EventConnections) network.EventConnections = {};
-        const conns = asArray(network.EventConnections.Connection);
-        conns.push({ Source: src, Destination: dst });
-        network.EventConnections.Connection = conns;
-      }
-    } else if (mc.type === "data") {
-      if (!existingDataConns.has(key)) {
-        if (!network.DataConnections) network.DataConnections = {};
-        const conns = asArray(network.DataConnections.Connection);
-        conns.push({ Source: src, Destination: dst });
-        network.DataConnections.Connection = conns;
-      }
-    }
+function patchResourceConnections(system: any, model: SysModel): void {
+  const startConnections = (model.subAppNetwork.connections || []).filter(
+    c => c.fromBlock === "START" || c.fromBlock.toUpperCase().endsWith(".START")
+  );
+  
+  if (startConnections.length === 0) return;
+  
+  const devices = asArray(system.Device);
+  if (devices.length === 0) return;
+  
+  const device = devices[0];
+  const resources = asArray(device.Resource);
+  if (resources.length === 0) return;
+  
+  const resource = resources[0];
+  
+  if (!resource.FBNetwork) resource.FBNetwork = {};
+  
+  // Добавляем префикс приложения к destination
+  const appName = model.applicationName;
+  const xmlConnections = startConnections.map(c => ({
+    Source: `${c.fromBlock}.${c.fromPort}`,
+    Destination: c.toBlock.includes(".") ? c.toBlock : `${appName}.${c.toBlock}.${c.toPort}`,
+  }));
+  
+  if (!resource.FBNetwork.EventConnections) {
+    resource.FBNetwork.EventConnections = {};
   }
+  resource.FBNetwork.EventConnections.Connection = xmlConnections;
 }
