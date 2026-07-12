@@ -4,7 +4,7 @@
 
 import { FBTypeModel, FBPort } from "../shared/models/fbtModel";
 import { FBKind } from "../shared/models/FBKind";
-import type { SysModel, SysBlock, SysSubApp } from "../shared/models/sysModel";
+import type { SysModel, SysBlock, SysSubApp, SysMapping, SysDiagramNode } from "../shared/models/sysModel";
 import { calculateNodeDimensions } from "./layout/nodeLayout";
 import { normalizeCoordinates } from "./utils/coordinateNormalization";
 import { COORDINATE_CONFIG, ZOOM_CONFIG } from "./constants";
@@ -66,6 +66,25 @@ export function buildPortsFromSubApp(
   }));
 }
 
+export function resolveBlockMapping(
+  blockId: string,
+  mappings: SysMapping[] | undefined,
+  applicationName?: string,
+): SysMapping | undefined {
+  if (!blockId || !mappings?.length) {
+    return undefined;
+  }
+
+  const normalizedBlockId = blockId.startsWith(`${applicationName}.`) ? blockId : `${applicationName ?? ""}${applicationName ? "." : ""}${blockId}`;
+  const directMatch = mappings.find((mapping) => mapping.fbInstance === blockId || mapping.fbInstance === normalizedBlockId);
+  if (directMatch) {
+    return directMatch;
+  }
+
+  const shortName = blockId.split(".").pop();
+  return mappings.find((mapping) => mapping.fbInstance === shortName || mapping.fbInstance?.endsWith(`.${shortName}`));
+}
+
 export interface ConvertedGraph {
   nodes: EditorNode[];
   connections: EditorConnection[];
@@ -83,10 +102,52 @@ export function convertDiagramToEditorGraph(
   logger: { info: (message: string, ...args: unknown[]) => void; debug: (message: string, ...args: unknown[]) => void },
 ): ConvertedGraph {
   // First pass: create nodes and cache dimensions by type
-  const diagramBlocks: (SysBlock | SysSubApp)[] = [
+  const diagramBlocks: (SysBlock | SysSubApp | SysDiagramNode)[] = [
     ...(diagram.subAppNetwork.blocks || []),
     ...(diagram.subAppNetwork.subApps || []),
   ];
+
+  // Build set of mapped resource-level block targets to avoid duplication
+  // (Only show application-level blocks; resource-level blocks are implementation detail)
+  const mappedResourceTargets = new Set<string>();
+  for (const mapping of diagram.mappings || []) {
+    // Store full target path (e.g., "FORTE_PC.EMB_RES.OUT_ANY_CONSOLE")
+    if (mapping.target) {
+      mappedResourceTargets.add(mapping.target);
+    }
+  }
+
+  // Add resource-level blocks only if they're NOT already shown via application-level mapping
+  for (const device of diagram.devices || []) {
+    for (const resource of device.resources || []) {
+      for (const block of resource.blocks || []) {
+        const isStartBlock = block.id.toUpperCase().endsWith(".START") || block.id.toUpperCase() === "START" || block.typeShort?.toUpperCase() === "E_RESTART";
+        const qualifiedId = `${device.name}.${resource.name}.${block.id}`;
+        const isMappedToApp = mappedResourceTargets.has(qualifiedId);
+        if (!isStartBlock && !isMappedToApp) {
+          diagramBlocks.push({
+            ...block,
+            source: "resource",
+            resourceName: resource.name,
+          } as SysDiagramNode);
+        }
+      }
+    }
+  }
+
+  // Always add START as built-in system node
+  const existingStartNode = diagramBlocks.find((b) => b.id.toUpperCase().endsWith(".START") || b.id.toUpperCase() === "START");
+  if (!existingStartNode) {
+    const startNode = {
+      id: "START",
+      typeShort: "E_RESTART",
+      typeLong: "E_RESTART",
+      x: 0,
+      y: 0,
+      fbKind: FBKind.BASIC,
+    } as SysDiagramNode;
+    diagramBlocks.unshift(startNode);
+  }
 
   const rawNodes = diagramBlocks.map((b) => {
     const subAppParams = "subAppInterfaceParams" in b ? b.subAppInterfaceParams : undefined;
@@ -100,9 +161,53 @@ export function convertDiagramToEditorGraph(
       }
     }
     const fbType = fbTypes.get(b.typeShort);
-    const ports = subAppParams
+    const isStartBlock = b.id.toUpperCase().endsWith(".START") || b.id.toUpperCase() === "START" || b.typeShort?.toUpperCase() === "E_RESTART";
+    
+    // For START block, create standard E_RESTART ports: COLD, WARM, STOP (output events)
+    let ports = subAppParams
       ? buildPortsFromSubApp(b.id, subAppParams, paramMap)
-      : (fbType ? buildPorts(b.id, fbType, paramMap) : []);
+      : fbType ? buildPorts(b.id, fbType, paramMap) : [];
+    
+    if (isStartBlock && ports.length === 0) {
+      ports = [
+        {
+          name: "COLD",
+          kind: "event" as const,
+          direction: "output" as const,
+          type: "Event",
+          value: undefined,
+          isDefaultValue: false,
+          id: `${b.id}.COLD`,
+          nodeId: b.id,
+          x: 0,
+          y: 0,
+        },
+        {
+          name: "WARM",
+          kind: "event" as const,
+          direction: "output" as const,
+          type: "Event",
+          value: undefined,
+          isDefaultValue: false,
+          id: `${b.id}.WARM`,
+          nodeId: b.id,
+          x: 0,
+          y: 0,
+        },
+        {
+          name: "STOP",
+          kind: "event" as const,
+          direction: "output" as const,
+          type: "Event",
+          value: undefined,
+          isDefaultValue: false,
+          id: `${b.id}.STOP`,
+          nodeId: b.id,
+          x: 0,
+          y: 0,
+        },
+      ];
+    }
     const inferredKind: FBKind | undefined = subAppParams ? FBKind.SUBAPP : ("fbKind" in b ? b.fbKind : undefined);
 
     // Use cached dimensions or calculate and cache them
@@ -115,7 +220,7 @@ export function convertDiagramToEditorGraph(
 
     // Find device color if this block is mapped to a device
     let deviceColor: string | undefined;
-    const blockMapping = diagram.mappings?.find((m) => m.fbInstance === b.id);
+    const blockMapping = resolveBlockMapping(b.id, diagram.mappings, diagram.applicationName);
     if (blockMapping && diagram.devices) {
       const device = diagram.devices.find((d) => d.name === blockMapping.device);
       if (device?.color) {

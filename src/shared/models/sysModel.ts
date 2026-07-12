@@ -71,6 +71,11 @@ export interface SysResource {
   connections?: SysConnection[]; // Resource FBNetwork connections
 }
 
+export interface SysDiagramNode extends SysBlock {
+  source: "application" | "resource";
+  resourceName?: string;
+}
+
 export interface SysDevice {
   name: string; // device name (e.g., "FORTE_PC")
   type?: string; // device type (e.g., "iec61499::system::FORTE_PC")
@@ -87,4 +92,5 @@ export interface SysMapping {
   fbInstance: string; // FB instance (e.g., "App.FB_Name")
   device: string; // Target device (e.g., "FORTE_PC")
   resource: string; // Target resource (e.g., "EMB_RES")
+  target?: string; // Full "To" path (e.g., "FORTE_PC.EMB_RES.OUT_ANY_CONSOLE")
 }

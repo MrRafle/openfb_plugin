@@ -106,30 +106,26 @@ function parseSubAppNetworkFromNode(
   const blocks: SysBlock[] = [];
   const subApps: SysSubApp[] = [];
 
-  const fbList = network?.FB;
-  if (fbList) {
-    const fbArray = asArray(fbList);
-    logger.debug(`Found ${fbArray.length} FB elements`);
-
+  if (network?.FB) {
+    const fbArray = asArray(network.FB);
     for (const fb of fbArray) {
       if (!fb || !fb.Name) continue;
-      const fbName = fb.Name;
-      const block = parseFBBlock(fb, fbName, sysDir, searchPaths, logger);
+      const block = parseFBBlock(fb, fb.Name, sysDir, searchPaths, logger);
       blocks.push(block);
     }
   }
 
-  const subAppList = network?.SubApp;
-  if (subAppList) {
-    const subAppArray = asArray(subAppList);
-    logger.debug(`Found ${subAppArray.length} SubApp elements`);
-
+  if (network?.SubApp) {
+    const subAppArray = asArray(network.SubApp);
     for (const subApp of subAppArray) {
       if (!subApp || !subApp.Name) continue;
       const subAppNode = parseSubAppElement(subApp, sysDir, searchPaths, logger);
       subApps.push(subAppNode);
     }
   }
+
+  logger.debug(`Found ${blocks.length} FB elements`);
+  logger.debug(`Found ${subApps.length} SubApp elements`);
 
   const connections = parseConnections(network, logger, true);
 

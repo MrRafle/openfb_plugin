@@ -8,19 +8,33 @@ function toSysIdentifier(fileName: string): string {
   return normalized || "NewSystem";
 }
 
-function createEmptySysXml(systemName: string): string {
+export function createEmptySysXml(systemName: string): string {
   const appName = `${systemName}_App`;
+  const startFbName = `${appName}.START`;
 
   return `<?xml version="1.0" encoding="UTF-8"?>
 <System Name="${systemName}">
-\t<Application Name="${appName}">
-\t\t<SubAppNetwork/>
-\t</Application>
-\t<Device Name="FORTE_PC" Type="iec61499::system::FORTE_PC">
-\t\t<Resource Name="EMB_RES" Type="iec61499::system::EMB_RES">
-\t\t\t<FBNetwork/>
-\t\t</Resource>
-\t</Device>
+	<VersionInfo Version="1.0" Author="OpenFB" Date="${new Date().toISOString().slice(0, 10)}"/>
+	<Application Name="${appName}">
+		<SubAppNetwork>
+			<FB Name="START" Type="E_RESTART"/>
+		</SubAppNetwork>
+	</Application>
+	<Device Name="FORTE_PC" Type="iec61499::system::FORTE_PC" x="2905.88" y="1364.71">
+		<Parameter Name="MGR_ID" Value="&quot;localhost:61499&quot;" Comment="Device manager socket ID"/>
+		<Attribute Name="Profile" Type="STRING" Value="HOLOBLOC"/>
+		<Attribute Name="Color" Type="STRING" Value="255,190,111"/>
+		<Resource Name="EMB_RES" Type="iec61499::system::EMB_RES" x="0" y="0">
+			<FBNetwork>
+				<FB Name="START" Type="E_RESTART"/>
+			</FBNetwork>
+		</Resource>
+	</Device>
+	<Segment Name="Ethernet" Type="iec61499::system::Ethernet" x="2329.41" y="917.65" dx1="1764.71">
+		<Attribute Name="Color" Type="STRING" Value="217,70,108"/>
+	</Segment>
+	<Link SegmentName="Ethernet" CommResource="FORTE_PC" Comment=""/>
+	<Mapping From="${startFbName}" To="FORTE_PC.EMB_RES"/>
 </System>
 `;
 }

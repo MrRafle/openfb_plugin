@@ -62,7 +62,9 @@ export class WebviewLogger {
     if (!this._shouldLog("debug")) return;
     const [style1, style2] = this.getColorStyle("debug");
     const msg = this.formatMessage("debug", message);
-    console.log(msg, style1, style2, ...args);
+    if ((window as any).OPENFB_DEBUG === true) {
+      console.log(msg, style1, style2, ...args);
+    }
     this.forwardToExtension("debug", message, args);
   }
 
@@ -70,7 +72,9 @@ export class WebviewLogger {
     if (!this._shouldLog("info")) return;
     const [style1, style2] = this.getColorStyle("info");
     const msg = this.formatMessage("info", message);
-    console.log(msg, style1, style2, ...args);
+    if ((window as any).OPENFB_DEBUG === true) {
+      console.log(msg, style1, style2, ...args);
+    }
     this.forwardToExtension("info", message, args);
   }
 

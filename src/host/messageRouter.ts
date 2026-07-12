@@ -40,7 +40,7 @@ export type WebviewMessage =
   | { type: "ready" }
   | { type: "deploy" }
   | { type: "generateFboot" }
-  | { type: "save-sys"; model?: SysModel; nodes?: Array<{ id: string; x: number; y: number }>; normParams?: NormParams }
+  | { type: "save-sys"; model?: SysModel; nodes?: Array<{ id: string; x: number; y: number }>; normParams?: NormParams; targetPath?: string }
   | { type: "settings:load" }
   | { type: "settings:save"; payload?: unknown }
   | { type: "settings:pick-path" }

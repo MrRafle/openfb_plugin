@@ -79,6 +79,11 @@ export function patchSysFile(originalPath: string, opts: PatchOptions): string {
   }
 
   for (const modelBlock of model.subAppNetwork.blocks) {
+    // Skip START and E_RESTART system blocks - they are built-in and not persisted
+    if (modelBlock.id === "START" || modelBlock.id.toUpperCase().endsWith(".START") || modelBlock.typeShort?.toUpperCase() === "E_RESTART") {
+      continue;
+    }
+
     const xmlFb = xmlBlocksByName.get(modelBlock.id);
 
     // Denormalize coordinates from screen to original XML scale
@@ -148,7 +153,7 @@ export function patchSysFile(originalPath: string, opts: PatchOptions): string {
     if (!existingFroms.has(mapping.fbInstance)) {
       xmlMappings.push({
         From: mapping.fbInstance,
-        To: `${mapping.device}.${mapping.resource}`,
+        To: mapping.target || `${mapping.device}.${mapping.resource}`,
       });
     }
   }

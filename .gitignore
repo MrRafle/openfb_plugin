@@ -11,3 +11,4 @@ webview_diagram_template.html
 .git/
 files/
 .vscode/
+tests/

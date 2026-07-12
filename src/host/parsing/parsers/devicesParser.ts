@@ -58,7 +58,8 @@ export function parseDevices(
       for (const res of resourceList) {
         if (!res || !res.Name) continue;
         
-        // Parse resource FB blocks from FBNetwork
+        // Parse resource FB blocks from FBNetwork, but keep them out of the main editor graph
+        // unless they are explicitly needed as real blocks. START is synthesized separately.
         const blocks: SysBlock[] = [];
         if (res.FBNetwork?.FB) {
           const fbList = asArray(res.FBNetwork.FB);
@@ -68,6 +69,9 @@ export function parseDevices(
             if (!fb || !fb.Name) continue;
             const fbName = `${device.Name}.${res.Name}.${fb.Name}`;
             const block = parseFBBlock(fb, fbName, sysDir, searchPaths, logger);
+            if (block.id.toUpperCase().endsWith(".START") || block.id.toUpperCase() === "START") {
+              continue;
+            }
             blocks.push(block);
           }
         }

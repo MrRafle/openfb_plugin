@@ -77,6 +77,16 @@ export function drawNode(
   roundedRectPath(ctx, x, y, w, h, C.NODE_BORDER_RADIUS);
   ctx.stroke();
 
+  const isStartNode = String(node.id || "").toUpperCase().endsWith(".START") || String(node.id || "").toUpperCase() === "START" || String(node.type || "").toUpperCase() === "E_RESTART";
+  if (isStartNode) {
+    ctx.save();
+    ctx.strokeStyle = "#4caf50";
+    ctx.lineWidth = 2.5;
+    roundedRectPath(ctx, x + 2, y + 2, w - 4, h - 4, C.NODE_BORDER_RADIUS);
+    ctx.stroke();
+    ctx.restore();
+  }
+
   // Draw SubApp border overlay (dashed)
   if ((node as any).fbKind === "SUBAPP") {
     ctx.strokeStyle = C.NODE_BORDER_COLOR;

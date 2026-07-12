@@ -19,9 +19,10 @@ export function parseMappings(
     if (!mapping?.From || !mapping?.To) continue;
     
     const fbInstance = mapping.From;
+    const toFullPath = mapping.To;
     
-    // Parse "To"
-    const toParts = mapping.To.split(".");
+    // Parse "To" - format: "Device.Resource.BlockName"
+    const toParts = toFullPath.split(".");
     const device = toParts[0];
     const resource = toParts[1] || "EMB_RES"; // Default resource name
     
@@ -29,6 +30,7 @@ export function parseMappings(
       fbInstance,
       device,
       resource,
+      target: toFullPath, // Keep full path for duplicate filtering
     });
   }
   
