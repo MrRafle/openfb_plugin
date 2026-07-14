@@ -141,6 +141,19 @@ export function drawPorts(ctx: CanvasRenderingContext2D, node: any, hoveredPortI
       }
     }
 
+    if (p.monitoringValue !== undefined) {
+      ctx.fillStyle = p.monitoringForced ? "#ffb347" : "#7CFC00";
+      ctx.font = "bold 11px sans-serif";
+      ctx.textAlign = p.direction === "input" ? "right" : "left";
+      ctx.textBaseline = "middle";
+
+      const x = p.direction === "input"
+        ? p.x - r - C.PORT_VALUE_OFFSET
+        : p.x + r + C.PORT_VALUE_OFFSET;
+
+      ctx.fillText(String(p.monitoringValue), x, p.y + 12);
+    }
+
     // Reset text alignment
     ctx.textAlign = C.DEFAULT_TEXT_ALIGN;
   }

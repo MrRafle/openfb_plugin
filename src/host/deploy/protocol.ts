@@ -1,4 +1,6 @@
 import { createXmlParser } from "../parsing/xmlParserFactory";
+import type { MonitoringValue } from "../../shared/models/monitoringModel";
+import { asArray } from "../../shared/utils/arrayUtils";
 
 /**
  * Build binary packet for openFB/FORTE protocol.
@@ -138,4 +140,54 @@ export function extractResourceNamesFromQueryResponse(xml: string): string[] {
   }
 
   return Array.from(names);
+}
+
+export function buildAddWatchRequest(id: number, source: string): string {
+  return `<Request ID="${id}" Action="CREATE"><Watch Source="${source}" Destination="*" /></Request>`;
+}
+
+export function buildDeleteWatchRequest(id: number, source: string): string {
+  return `<Request ID="${id}" Action="DELETE"><Watch Source="${source}" Destination="*" /></Request>`;
+}
+
+export function buildReadWatchesRequest(id: number): string {
+  return `<Request ID="${id}" Action="READ"><Watches/></Request>`;
+}
+
+export function buildForceValueRequest(id: number, value: string, destination: string, force: boolean): string {
+  return `<Request ID="${id}" Action="WRITE"><Connection Source="${value}" Destination="${destination}" force="${force}" /></Request>`;
+}
+
+export function buildTriggerEventRequest(id: number, destination: string): string {
+  return `<Request ID="${id}" Action="WRITE"><Connection Source="$e" Destination="${destination}" /></Request>`;
+}
+
+export function parseWatchesResponse(xml: string): MonitoringValue[] {
+  const parser = createXmlParser({
+    isArray: (tagName: string) => ["Resource", "FB", "Port"].includes(tagName),
+  });
+
+  const doc = parser.parse(xml);
+  const resources = asArray(doc?.Resource ?? doc?.Response?.Resource);
+  const result: MonitoringValue[] = [];
+
+  for (const resource of resources) {
+    for (const fb of asArray(resource?.FB)) {
+      for (const port of asArray(fb?.Port)) {
+        const data = port?.Data;
+        if (!fb?.name || !port?.name || !data) continue;
+
+        result.push({
+          resource: resource.name || "",
+          fb: fb.name,
+          port: port.name,
+          value: String(data.value ?? ""),
+          forced: data.forced === true || data.forced === "true",
+          timestamp: Date.now(),
+        });
+      }
+    }
+  }
+
+  return result;
 }

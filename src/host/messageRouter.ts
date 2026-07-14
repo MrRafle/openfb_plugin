@@ -10,6 +10,7 @@ import type { NormParams } from "./parsing/sysPatcher";
 import { readSettingsFromVsCodeConfig } from "./settingsManager";
 import { t } from "../shared/i18n";
 import { handleGeneratePython } from "./handlers/pythonGenerator";
+import type { MonitoringSession } from "./handlers/monitoringHandler";
 
 /**
  * Shared context available to every message handler.
@@ -19,6 +20,7 @@ export interface MessageContext {
   panel: vscode.WebviewPanel;
   uri: vscode.Uri;
   logger: Logger;
+  monitoringSession: MonitoringSession;
 
   /** Mutable shared state from the activate() scope. */
   shared: {
@@ -48,7 +50,13 @@ export type WebviewMessage =
   | { type: "dirty-state-changed"; isDirty?: boolean }
   | { type: "webview-log"; level?: string; message?: string; args?: string[] }
   | { type: "create-fb-type"; payload?: unknown }
-  | { type: "generate-python"; payload?: unknown };
+  | { type: "generate-python"; payload?: unknown }
+  | { type: "monitoring:start" }
+  | { type: "monitoring:stop" }
+  | { type: "monitoring:add-watch"; nodeId: string; portName: string }
+  | { type: "monitoring:delete-watch"; nodeId: string; portName: string }
+  | { type: "monitoring:force-value"; nodeId: string; portName: string; value: string; force: boolean }
+  | { type: "monitoring:trigger-event"; nodeId: string; portName: string };
 
 /**
  * Route a single webview message to the appropriate handler.
@@ -82,6 +90,25 @@ export async function routeWebviewMessage(m: WebviewMessage, ctx: MessageContext
       return handleCreateFbType(m, ctx);
     case "generate-python":
       return handleGeneratePython(m, ctx);
+
+    case "monitoring:start":
+      await ctx.monitoringSession.start();
+      return true;
+    case "monitoring:stop":
+      await ctx.monitoringSession.stop();
+      return true;
+    case "monitoring:add-watch":
+      await ctx.monitoringSession.addWatch(m.nodeId, m.portName);
+      return true;
+    case "monitoring:delete-watch":
+      await ctx.monitoringSession.deleteWatch(m.nodeId, m.portName);
+      return true;
+    case "monitoring:force-value":
+      await ctx.monitoringSession.forceValue(m.nodeId, m.portName, m.value, m.force);
+      return true;
+    case "monitoring:trigger-event":
+      await ctx.monitoringSession.triggerEvent(m.nodeId, m.portName);
+      return true;
     default:
       return false;
   }

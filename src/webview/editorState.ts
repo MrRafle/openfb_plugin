@@ -27,6 +27,9 @@ export interface EditorPort extends FBPort {
   y: number;
   value?: string;
   isDefaultValue?: boolean;
+  monitoringValue?: string;
+  monitoringForced?: boolean;
+  monitoringActive?: boolean;
 }
 
 export interface EditorNode {
@@ -139,6 +142,10 @@ export class EditorState implements EditorStore {
     logEditorAction(action);
     this.storeState = editorReducer(this.storeState, action);
     this.syncPublicStateFromStore();
+    this.notifyListeners();
+  }
+
+  public requestRender(): void {
     this.notifyListeners();
   }
 

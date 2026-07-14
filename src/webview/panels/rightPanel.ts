@@ -162,6 +162,62 @@ export function createRightPanelController(options: RightPanelOptions): RightPan
     }
   }
 
+  function attachMonitoringHandlers(container: HTMLElement): void {
+    const watchButtons = container.querySelectorAll<HTMLButtonElement>(".monitor-watch-btn");
+
+    Array.from(watchButtons).forEach((btn) => {
+      const nodeId = btn.dataset.nodeId;
+      const portName = btn.dataset.portName;
+      if (!nodeId || !portName) return;
+
+      btn.addEventListener("click", () => {
+        state.sendMessage({
+          type: "monitoring:add-watch",
+          nodeId,
+          portName,
+        });
+      });
+    });
+
+    const triggerButtons = container.querySelectorAll<HTMLButtonElement>(".monitor-trigger-btn");
+
+    Array.from(triggerButtons).forEach((btn) => {
+      const nodeId = btn.dataset.nodeId;
+      const portName = btn.dataset.portName;
+      if (!nodeId || !portName) return;
+
+      btn.addEventListener("click", () => {
+        state.sendMessage({
+          type: "monitoring:trigger-event",
+          nodeId,
+          portName,
+        });
+      });
+    });
+
+    const forceButtons = container.querySelectorAll<HTMLButtonElement>(".monitor-force-btn");
+
+    Array.from(forceButtons).forEach((btn) => {
+      const nodeId = btn.dataset.nodeId;
+      const portName = btn.dataset.portName;
+      if (!nodeId || !portName) return;
+
+      btn.addEventListener("click", () => {
+        const input = container.querySelector<HTMLInputElement>(
+          `.monitor-force-input[data-node-id="${nodeId}"][data-port-name="${portName}"]`,
+        );
+
+        state.sendMessage({
+          type: "monitoring:force-value",
+          nodeId,
+          portName,
+          value: input?.value ?? "",
+          force: true,
+        });
+      });
+    });
+  }
+
   function renderBlockInfoTab(): void {
     const sidepanelHeader = document.getElementById("sidepanel-header");
     const sidepanelContent = document.getElementById("sidepanel-content");
@@ -207,6 +263,7 @@ export function createRightPanelController(options: RightPanelOptions): RightPan
 
     // Attach event handlers for editable parameter inputs and OPC checkboxes
     attachParameterHandlers(sidepanelContent);
+    attachMonitoringHandlers(sidepanelContent);
   }
 
   /**

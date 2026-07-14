@@ -82,23 +82,37 @@ export function setupToolbarHandlers(deps: ToolbarHandlersDeps): void {
   };
 
   const saveAsBtn = document.getElementById("saveAsBtn") as HTMLButtonElement | null;
-  if (saveAsBtn) {
-    saveAsBtn.addEventListener("click", () => {
-      logger.debug("Save As button clicked");
-      saveCurrentDiagram();
-    });
-  } else {
-    logger.warn("saveAsBtn button not found in DOM");
-  }
-
-  window.addEventListener("keydown", (event: KeyboardEvent) => {
-    const isSaveShortcut = (event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "s";
-    if (!isSaveShortcut) {
-      return;
+    if (saveAsBtn) {
+      saveAsBtn.addEventListener("click", () => {
+        logger.debug("Save As button clicked");
+        saveCurrentDiagram();
+      });
+    } else {
+      logger.warn("saveAsBtn button not found in DOM");
     }
 
-    event.preventDefault();
-    event.stopPropagation();
-    saveCurrentDiagram();
-  });
-}
+    window.addEventListener("keydown", (event: KeyboardEvent) => {
+      const isSaveShortcut = (event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "s";
+      if (!isSaveShortcut) {
+        return;
+      }
+
+      event.preventDefault();
+      event.stopPropagation();
+      saveCurrentDiagram();
+    });
+
+    let monitoringEnabled = false;
+
+    const monitoringBtn = document.getElementById("monitoringToggleBtn") as HTMLButtonElement | null;
+    if (monitoringBtn) {
+      monitoringBtn.addEventListener("click", () => {
+        monitoringEnabled = !monitoringEnabled;
+        monitoringBtn.textContent = monitoringEnabled ? "Stop Monitor" : "Monitor";
+
+        vscode?.postMessage({
+          type: monitoringEnabled ? "monitoring:start" : "monitoring:stop",
+        });
+      });
+    }
+  }

@@ -97,9 +97,7 @@ export async function handleSaveSys(
     fs.writeFileSync(savePath, xml, "utf8");
 
     // Re-parse the saved file to get the complete model
-    const { parseSysFile } = await import("../parsing/sysParser");
-    const reloadedModel = parseSysFile(savePath, ctx.shared.searchPaths || []);
-    ctx.shared.model = reloadedModel;
+    ctx.shared.model = updatedModel;
 
     ctx.logger.info("SYS file saved to", savePath);
 
@@ -108,12 +106,6 @@ export async function handleSaveSys(
         path: savePath,
       }),
     );
-
-    ctx.panel.webview.postMessage({
-      type: "load-diagram",
-      payload: reloadedModel, // Use reloaded model instead of updatedModel
-      fbTypes: Array.from(ctx.shared.fbTypeMap.entries()),
-    });
 
     ctx.panel.webview.postMessage({
       type: "save-sys-result",

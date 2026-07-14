@@ -55,6 +55,7 @@ function buildBodyHtml(scriptUri: vscode.Uri, language: UiLanguage): string {
     <div class="toolbar-center">
       <button id="generateFbootBtn">${tr("toolbar.generateFboot")}</button>
       <button id="deployBtn">${tr("toolbar.deploy")}</button>
+      <button id="monitoringToggleBtn">Monitor</button>
     </div>
     <div class="toolbar-right">
       <button id="saveAsBtn">${tr("toolbar.saveAs")}</button>

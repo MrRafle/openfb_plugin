@@ -8,6 +8,7 @@ import type { Logger } from "./logging";
 import { createTypeLibraryResolver, createDiagramLoader } from "./diagramLoader";
 import { readSettingsFromVsCodeConfig } from "./settingsManager";
 import { t } from "../shared/i18n";
+import { MonitoringSession } from "./handlers/monitoringHandler";
 
 const FALLBACK_TIMEOUT_MS = 1500;
 
@@ -34,11 +35,6 @@ export async function openSysDiagramPanel(
   );
 
   const panelDisposables: vscode.Disposable[] = [];
-  panel.onDidDispose(() => {
-    logger.debug("Cleaning up OpenFB Editor panel resources");
-    panelDisposables.forEach(d => d.dispose());
-  }, null, panelDisposables);
-
   panel.webview.html = getWebviewHtml(panel.webview, context.extensionUri, readSettingsFromVsCodeConfig().uiLanguage);
 
   try {
@@ -60,6 +56,18 @@ export async function openSysDiagramPanel(
       fbTypeMap: new Map(),
       searchPaths: [],
     };
+
+    const monitoringSession = new MonitoringSession(
+      panel,
+      () => shared.model,
+      innerLogger,
+    );
+
+    panel.onDidDispose(() => {
+      logger.debug("Cleaning up OpenFB Editor panel resources");
+      panelDisposables.forEach(d => d.dispose());
+      monitoringSession.stop().catch((err) => logger.error("Failed to stop monitoring", err));
+    }, null, panelDisposables);
 
     const resolveTypeLibraryPath = createTypeLibraryResolver(sysFileDir, innerLogger);
     const loadDiagramData = createDiagramLoader(uri, workspaceFolder, shared, resolveTypeLibraryPath, innerLogger);
@@ -88,6 +96,7 @@ export async function openSysDiagramPanel(
       loadDiagramData,
       resolveTypeLibraryPath,
       basePanelTitle,
+      monitoringSession,
     };
 
     let timeoutHandle: NodeJS.Timeout | undefined;

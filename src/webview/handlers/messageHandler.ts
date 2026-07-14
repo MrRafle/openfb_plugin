@@ -7,10 +7,16 @@ import type { TreeNode } from "../panels/leftPanel";
 import type { WebviewLogger } from "../logging";
 import { tr, setLanguage } from "../i18nService";
 import { resolveLanguage } from "../../shared/i18n";
+import type { MonitoringSnapshot } from "../../shared/models/monitoringModel";
 
 export interface ExtensionMessage {
   type: string;
-  payload?: SysModel | PluginSettings | { settings?: PluginSettings; lockedPath?: string } | { success?: boolean; filePath?: string; error?: string } | string;
+  payload?: SysModel
+  | PluginSettings
+  | { settings?: PluginSettings; lockedPath?: string }
+  | { success?: boolean; filePath?: string; error?: string }
+  | MonitoringSnapshot
+  | string;
   fbTypes?: [string, FBTypeModel][];
   fbTypesTree?: TreeNode[];
 }
@@ -198,10 +204,6 @@ function handleSaveSysResult(event: MessageEvent<ExtensionMessage>, deps: Messag
       (window as Window & { __openfbTargetPath?: string }).__openfbTargetPath = result.filePath;
     }
     deps.state.dispatch({ type: "RESET_DIRTY" });
-    if (deps.state.model) {
-      deps.state.loadFromDiagram(deps.state.model, deps.state.fbTypes || new Map());
-      deps.centerDiagramInCanvas();
-    }
   } else {
     const error = result?.error || tr("saveSys.unknownError");
     deps.logger.error("Save failed:", error);
@@ -255,6 +257,27 @@ export function createMessageHandler(deps: MessageHandlerDeps) {
       case "create-fb-type-result":
         handleCreateFbTypeResult(event, deps);
         return;
+      case "monitoring:values": {
+        const payload = event.data.payload as MonitoringSnapshot | undefined;
+        const values = payload?.values || [];
+
+        for (const value of values) {
+          const node = deps.state.nodes.find((n) =>
+            value.fb.endsWith(`.${n.id}`) || value.fb === n.id,
+          );
+          const port = node?.ports.find((p) => p.name === value.port);
+
+          if (port) {
+            port.monitoringValue = value.value;
+            port.monitoringForced = value.forced;
+            port.monitoringActive = true;
+          }
+        }
+
+        deps.state.requestRender();
+        deps.updateSidepanel();
+        return;
+      }
       default:
         deps.logger.debug("Message type not recognized", event.data?.type);
         return;
