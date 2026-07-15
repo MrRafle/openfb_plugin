@@ -71,18 +71,16 @@ export function buildPortSectionHtml(options: PortBuilderOptions): string {
       contentHtml += `<label class="opc-mapping-label" title="OPC UA Mapping"><input type="checkbox" class="opc-mapping-checkbox" data-node-id="${nodeId}" data-port-name="${port.name}" ${checked} ${disabledAttr} /> OPC</label>`;
     }
 
-    contentHtml += `<button class="monitor-watch-btn" data-node-id="${nodeId}" data-port-name="${port.name}">Watch</button>`;
+    contentHtml += `<button class="monitor-watch-btn" data-node-id="${nodeId}" data-port-name="${port.name}" title="Следить за значением">Watch</button>`;
 
     if (nodeId !== "START") {
-      contentHtml += `<button class="monitor-watch-btn" data-node-id="${nodeId}" data-port-name="${port.name}">Watch</button>`;
-
-      if (port.kind === "event") {
-        contentHtml += `<button class="monitor-trigger-btn" data-node-id="${nodeId}" data-port-name="${port.name}">Trigger</button>`;
+      if (port.kind === "event" && port.direction === "input") {
+        contentHtml += `<button class="monitor-trigger-btn" data-node-id="${nodeId}" data-port-name="${port.name}" title="Сымитировать событие">Trigger</button>`;
       }
-
+      
       if (port.kind === "data" && port.direction === "input") {
-        contentHtml += `<input class="monitor-force-input" data-node-id="${nodeId}" data-port-name="${port.name}" style="width: 60px;" />`;
-        contentHtml += `<button class="monitor-force-btn" data-node-id="${nodeId}" data-port-name="${port.name}">Force</button>`;
+        contentHtml += `<input type="text" class="monitor-force-input" placeholder="Force" data-node-id="${nodeId}" data-port-name="${port.name}" style="width: 60px;" />`;
+        contentHtml += `<button class="monitor-force-btn" data-node-id="${nodeId}" data-port-name="${port.name}" title="Принудительно задать значение">Force</button>`;
       }
     }
 

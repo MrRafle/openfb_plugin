@@ -171,6 +171,8 @@ export function createRightPanelController(options: RightPanelOptions): RightPan
       if (!nodeId || !portName) return;
 
       btn.addEventListener("click", () => {
+        console.log(`[MONITOR DEBUG] Watch clicked! Node: "${nodeId}", Port: "${portName}"`);
+        
         state.sendMessage({
           type: "monitoring:add-watch",
           nodeId,

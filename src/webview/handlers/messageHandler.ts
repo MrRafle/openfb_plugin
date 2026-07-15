@@ -275,7 +275,7 @@ export function createMessageHandler(deps: MessageHandlerDeps) {
         }
 
         deps.state.requestRender();
-        deps.updateSidepanel();
+        // deps.updateSidepanel();
         return;
       }
       default:
