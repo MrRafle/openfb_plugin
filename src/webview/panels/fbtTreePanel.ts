@@ -22,6 +22,45 @@ interface FbtTreePanelOptions {
   onClose: () => void;
 }
 
+/**
+ * Рекурсивно фильтрует дерево узлов по поисковому запросу.
+ * Автоматически раскрывает папки, в которых найдены совпадения.
+ */
+function filterTreeNodes(
+  nodes: TreeNode[], 
+  query: string, 
+  expandedState: Map<string, boolean>, 
+  parentPath: string = ""
+): TreeNode[] {
+  if (!query || query.trim() === "") {
+    return nodes;
+  }
+
+  const lowerQuery = query.toLowerCase();
+
+  return nodes.reduce<TreeNode[]>((acc, node) => {
+    const nodePath = parentPath ? `${parentPath}/${node.name}` : node.name;
+    
+    const matchesName = node.name.toLowerCase().includes(lowerQuery);
+    
+    const filteredChildren = node.children 
+      ? filterTreeNodes(node.children, query, expandedState, nodePath) 
+      : [];
+
+    if (matchesName || filteredChildren.length > 0) {
+      if (node.type === "folder" && filteredChildren.length > 0) {
+        expandedState.set(nodePath, true);
+      }
+      
+      acc.push({
+        ...node,
+        children: filteredChildren.length > 0 ? filteredChildren : node.children,
+      });
+    }
+    return acc;
+  }, []);
+}
+
 export function createFbtTreePanelController(options: FbtTreePanelOptions): FbtTreePanelController {
   const { logger, onClose } = options;
 
@@ -31,6 +70,7 @@ export function createFbtTreePanelController(options: FbtTreePanelOptions): FbtT
   let fbTypesTreeError: string | undefined;
   let fbTypesNodeExpanded: Map<string, boolean> = new Map();
   let isFbtTreeOpened = false;
+  let searchQuery = "";
 
   function renderFbtTree(): void {
     const leftContent = document.getElementById("left-sidepanel-content");
@@ -51,14 +91,46 @@ export function createFbtTreePanelController(options: FbtTreePanelOptions): FbtT
       return;
     }
 
+    const filteredTree = filterTreeNodes(fbTypesTree, searchQuery, fbTypesNodeExpanded);
+
     const treeOptions = { expandedState: fbTypesNodeExpanded };
-    let html = renderTreeHtml(fbTypesTree, treeOptions);
+    
+    // HTML поля поиска
+    const searchHtml = `
+      <div style="padding: 10px; border-bottom: 1px solid rgba(128,128,128,0.2); margin-bottom: 10px;">
+        <input 
+          type="text" 
+          id="block-library-search" 
+          placeholder="Поиск блоков..." 
+          value="${searchQuery}"
+          style="width: 100%; padding: 8px 12px; border: 1px solid rgba(128,128,128,0.3); border-radius: 6px; background: rgba(255,255,255,0.05); color: inherit; font-size: 13px; outline: none; box-sizing: border-box;"
+        />
+      </div>
+    `;
+
+    let html = searchHtml + renderTreeHtml(filteredTree, treeOptions);
 
     html += `<div class="fbt-tree-footer">
-    ${renderButton({ id: "closeFbtTreeBtn", label: tr("common.close"), style: "secondary", fullWidth: true, extraCss: "font-size:12px; padding:8px 10px;" })}
-  </div>`;
+      ${renderButton({ id: "closeFbtTreeBtn", label: tr("common.close"), style: "secondary", fullWidth: true, extraCss: "font-size:12px; padding:8px 10px;" })}
+    </div>`;
 
     leftContent.innerHTML = html;
+
+    // Обработчик живого поиска с сохранением фокуса
+    const searchInput = leftContent.querySelector("#block-library-search") as HTMLInputElement;
+    if (searchInput) {
+      searchInput.addEventListener("input", (e) => {
+        searchQuery = (e.target as HTMLInputElement).value;
+        renderFbtTree();
+        
+        // Возвращаем фокус и курсор в конец строки
+        const input = leftContent.querySelector("#block-library-search") as HTMLInputElement;
+        if (input) {
+          input.focus();
+          input.setSelectionRange(searchQuery.length, searchQuery.length);
+        }
+      });
+    }
 
     attachTreeHandlers(leftContent, {
       onToggle: (nodePath) => {
@@ -86,6 +158,7 @@ export function createFbtTreePanelController(options: FbtTreePanelOptions): FbtT
     fbTypesTreeLoading = true;
     fbTypesTreeError = undefined;
     fbTypesNodeExpanded.clear();
+    searchQuery = "";
 
     renderFbtTree();
   }
@@ -93,6 +166,7 @@ export function createFbtTreePanelController(options: FbtTreePanelOptions): FbtT
   function closeFbtTreePanel(): void {
     isFbtTreeOpened = false;
     draggedBlockType = null;
+    searchQuery = "";
     onClose();
   }
 

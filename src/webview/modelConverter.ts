@@ -181,7 +181,19 @@ export function convertDiagramToEditorGraph(
         }
       }
     }
-    const fbType = fbTypes.get(b.typeShort);
+    const typeName = ("typeLong" in b ? b.typeLong : undefined) || b.typeShort || "";
+    
+    const shortTypeName = typeName.split("::").pop() || typeName;
+    
+    // Ищем тип по полному имени, затем по короткому, затем по typeShort
+    const fbType = 
+      fbTypes.get(typeName) || 
+      fbTypes.get(shortTypeName) || 
+      fbTypes.get(b.typeShort || "");
+
+    if (!fbType) {
+      logger?.debug(`FB Type not found for block "${b.id}". Searched: "${typeName}" / "${shortTypeName}"`);
+    }
     const isStartBlock = b.id.toUpperCase().endsWith(".START") || b.id.toUpperCase() === "START" || b.typeShort?.toUpperCase() === "E_RESTART";
     
     // For START block, create standard E_RESTART ports: COLD, WARM, STOP (output events)
@@ -316,24 +328,31 @@ export function convertDiagramToEditorGraph(
   });
 
   // Collect resource-level connections (START connections)
-const resourceConnections: EditorConnection[] = [];
-for (const device of diagram.devices || []) {
-  for (const resource of device.resources || []) {
-    if (resource.connections) {
-      for (const c of resource.connections) {
-        // Only add connections from START (virtual source)
-        if (c.fromBlock === "START" || c.fromBlock.toUpperCase().endsWith(".START")) {
-          resourceConnections.push({
-            id: `${c.fromBlock}.${c.fromPort}->${c.toBlock}.${c.toPort}`,
-            fromPortId: `${c.fromBlock}.${c.fromPort}`,
-            toPortId: `${c.toBlock}.${c.toPort}`,
-            type: c.type,
-          });
+  const resourceConnections: EditorConnection[] = [];
+  for (const device of diagram.devices || []) {
+    for (const resource of device.resources || []) {
+      if (resource.connections) {
+        for (const c of resource.connections) {
+          // Only add connections from START (virtual source)
+          if (c.fromBlock === "START" || c.fromBlock.toUpperCase().endsWith(".START")) {
+            let cleanToBlock = c.toBlock || "";
+            if (cleanToBlock.startsWith(diagram.applicationName + ".")) {
+              cleanToBlock = cleanToBlock.substring(diagram.applicationName.length + 1);
+            }
+            
+            const cleanToPortId = `${cleanToBlock}.${c.toPort}`;
+
+            resourceConnections.push({
+              id: `${c.fromBlock}.${c.fromPort}->${cleanToBlock}.${c.toPort}`,
+              fromPortId: `${c.fromBlock}.${c.fromPort}`,
+              toPortId: cleanToPortId, // Используем очищенный ID
+              type: c.type,
+            });
+          }
         }
       }
     }
   }
-}
 
 // Combine all connections
 const allConnections = [...mappedConnections, ...resourceConnections];
