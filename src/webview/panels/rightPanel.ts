@@ -28,6 +28,7 @@ export function createRightPanelController(options: RightPanelOptions): RightPan
   const { state } = options;
 
   let diagramTabMode: DiagramTabMode = "devices";
+  const activeWatches = new Set<string>();
 
   function renderDevicesTab(): void {
     const sidepanelHeader = document.getElementById("sidepanel-header");
@@ -162,6 +163,18 @@ export function createRightPanelController(options: RightPanelOptions): RightPan
     }
   }
 
+  function clearPortMonitoringValue(nodeId: string, portName: string): void {
+    const node = state.nodes.find((n) => n.id === nodeId);
+    const port = node?.ports.find((p) => p.name === portName);
+
+    if (!port) return;
+
+    port.monitoringValue = undefined;
+    port.monitoringForced = undefined;
+    port.monitoringActive = false;
+    state.requestRender();
+  }
+
   function attachMonitoringHandlers(container: HTMLElement): void {
     const watchButtons = container.querySelectorAll<HTMLButtonElement>(".monitor-watch-btn");
 
@@ -170,15 +183,45 @@ export function createRightPanelController(options: RightPanelOptions): RightPan
       const portName = btn.dataset.portName;
       if (!nodeId || !portName) return;
 
-      btn.addEventListener("click", () => {
-        console.log(`[MONITOR DEBUG] Watch clicked! Node: "${nodeId}", Port: "${portName}"`);
-        
+    const key = `${nodeId}.${portName}`;
+
+    if (activeWatches.has(key)) {
+      btn.classList.add("active");
+      btn.textContent = "Watching";
+    } else {
+      btn.classList.remove("active");
+      btn.textContent = "Watch";
+    }
+
+    btn.addEventListener("click", () => {
+      const isActive = activeWatches.has(key);
+
+      if (isActive) {
+        activeWatches.delete(key);
+        clearPortMonitoringValue(nodeId, portName);
+
         state.sendMessage({
-          type: "monitoring:add-watch",
+          type: "monitoring:delete-watch",
           nodeId,
           portName,
         });
+
+        btn.classList.remove("active");
+        btn.textContent = "Watch";
+        return;
+      }
+
+      activeWatches.add(key);
+
+      state.sendMessage({
+        type: "monitoring:add-watch",
+        nodeId,
+        portName,
       });
+
+      btn.classList.add("active");
+      btn.textContent = "Watching";
+    });
     });
 
     const triggerButtons = container.querySelectorAll<HTMLButtonElement>(".monitor-trigger-btn");

@@ -19,6 +19,8 @@ export interface ExtensionMessage {
   | string;
   fbTypes?: [string, FBTypeModel][];
   fbTypesTree?: TreeNode[];
+  portId?: string;
+  error?: string;
 }
 
 interface LeftPanelDeps {
@@ -256,6 +258,34 @@ export function createMessageHandler(deps: MessageHandlerDeps) {
         return;
       case "create-fb-type-result":
         handleCreateFbTypeResult(event, deps);
+        return;
+      case "monitoring:watch-added":
+        deps.logger.info("Watch added:", event.data.portId);
+        return;
+      case "monitoring:watch-deleted": {
+        deps.logger.info("Watch deleted:", event.data.portId);
+
+        const portId = String(event.data.portId || "");
+        const lastDot = portId.lastIndexOf(".");
+        if (lastDot > 0) {
+          const nodeId = portId.slice(0, lastDot);
+          const portName = portId.slice(lastDot + 1);
+
+          const node = deps.state.nodes.find((n) => n.id === nodeId);
+          const port = node?.ports.find((p) => p.name === portName);
+
+          if (port) {
+            port.monitoringValue = undefined;
+            port.monitoringForced = undefined;
+            port.monitoringActive = false;
+            deps.state.requestRender();
+          }
+        }
+
+        return;
+      }
+      case "monitoring:error":
+        deps.logger.error("Monitoring error:", event.data.error);
         return;
       case "monitoring:values": {
         const payload = event.data.payload as MonitoringSnapshot | undefined;

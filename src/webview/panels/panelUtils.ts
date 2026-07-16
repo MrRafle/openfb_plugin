@@ -71,9 +71,9 @@ export function buildPortSectionHtml(options: PortBuilderOptions): string {
       contentHtml += `<label class="opc-mapping-label" title="OPC UA Mapping"><input type="checkbox" class="opc-mapping-checkbox" data-node-id="${nodeId}" data-port-name="${port.name}" ${checked} ${disabledAttr} /> OPC</label>`;
     }
 
-    contentHtml += `<button class="monitor-watch-btn" data-node-id="${nodeId}" data-port-name="${port.name}" title="Следить за значением">Watch</button>`;
-
     if (nodeId !== "START") {
+      contentHtml += `<button class="monitor-watch-btn" data-node-id="${nodeId}" data-port-name="${port.name}" title="Следить за значением">Watch</button>`;
+
       if (port.kind === "event" && port.direction === "input") {
         contentHtml += `<button class="monitor-trigger-btn" data-node-id="${nodeId}" data-port-name="${port.name}" title="Сымитировать событие">Trigger</button>`;
       }

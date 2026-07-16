@@ -1,0 +1,7 @@
+;<Request ID="5" Action="CREATE"><FB Name="EMB_RES" Type="iec61499::system::EMB_RES" /></Request>
+EMB_RES;<Request ID="6" Action="CREATE"><FB Name="NewSystem_App.OUT_ANY_CONSOLE_1" Type="OUT_ANY_CONSOLE"></FB></Request>
+EMB_RES;<Request ID="7" Action="WRITE"><Connection Source="TRUE" Destination="NewSystem_App.OUT_ANY_CONSOLE_1.QI" /></Request>
+EMB_RES;<Request ID="8" Action="WRITE"><Connection Source="hello" Destination="NewSystem_App.OUT_ANY_CONSOLE_1.LABEL" /></Request>
+EMB_RES;<Request ID="9" Action="WRITE"><Connection Source="123" Destination="NewSystem_App.OUT_ANY_CONSOLE_1.IN" /></Request>
+EMB_RES;<Request ID="10" Action="CREATE"><Connection Source="START.COLD" Destination="NewSystem_App.OUT_ANY_CONSOLE_1.REQ" /></Request>
+EMB_RES;<Request ID="11" Action="START"/>

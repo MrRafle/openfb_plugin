@@ -204,7 +204,7 @@ export class OpenFBHandler {
         const buf = Buffer.concat(chunks, totalLen);
 
         if (buf.length >= 3) {
-          const lenXml = buf[2];
+          const lenXml = buf.readUInt16BE(1);
           if (buf.length >= 3 + lenXml) {
             socket.removeListener("data", onData);
             cleanup();

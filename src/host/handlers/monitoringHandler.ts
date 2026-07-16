@@ -20,6 +20,7 @@ export class MonitoringSession {
   private requestId = 1;
   private pollTimer?: NodeJS.Timeout;
   private watched = new Map<string, { resource: string; source: string }>();
+  private sendQueue = Promise.resolve();
 
   constructor(
     private readonly panel: vscode.WebviewPanel,
@@ -60,7 +61,11 @@ export class MonitoringSession {
     this.socket = undefined;
     this.watched.clear();
 
-    this.panel.webview.postMessage({ type: "monitoring:stopped" });
+    try {
+      this.panel.webview.postMessage({ type: "monitoring:stopped" });
+    } catch {
+      // Panel can already be disposed.
+    }
     this.logger.info("Monitoring stopped");
   }
 
@@ -70,7 +75,18 @@ export class MonitoringSession {
     const target = this.resolveTarget(nodeId, portName);
     const key = `${nodeId}.${portName}`;
 
-    await this.send(target.resource, buildAddWatchRequest(this.nextId(), target.source));
+    if (this.watched.has(key)) {
+      this.logger.info("Watch already active", { nodeId, portName, target });
+      return;
+    }
+
+    this.logger.info("Adding watch", { nodeId, portName, target });
+
+    const response = await this.enqueueSend(
+      target.resource,
+      buildAddWatchRequest(this.nextId(), target.source),
+    );
+    this.logger.info("Add watch response", response);
     this.watched.set(key, target);
 
     this.panel.webview.postMessage({ type: "monitoring:watch-added", portId: key });
@@ -81,7 +97,7 @@ export class MonitoringSession {
     const target = this.watched.get(key);
     if (!target) return;
 
-    await this.send(target.resource, buildDeleteWatchRequest(this.nextId(), target.source));
+    await this.enqueueSend(target.resource, buildDeleteWatchRequest(this.nextId(), target.source));
     this.watched.delete(key);
 
     this.panel.webview.postMessage({ type: "monitoring:watch-deleted", portId: key });
@@ -90,20 +106,23 @@ export class MonitoringSession {
   async forceValue(nodeId: string, portName: string, value: string, force: boolean): Promise<void> {
     await this.start();
     const target = this.resolveTarget(nodeId, portName);
-    await this.send(target.resource, buildForceValueRequest(this.nextId(), value, target.source, force));
+    await this.enqueueSend(target.resource, buildForceValueRequest(this.nextId(), value, target.source, force));
   }
 
   async triggerEvent(nodeId: string, portName: string): Promise<void> {
     await this.start();
     const target = this.resolveTarget(nodeId, portName);
-    await this.send(target.resource, buildTriggerEventRequest(this.nextId(), target.source));
+    await this.enqueueSend(target.resource, buildTriggerEventRequest(this.nextId(), target.source));
   }
 
   private async readWatches(): Promise<void> {
     if (!this.socket || this.watched.size === 0) return;
 
-    const xml = await this.send("", buildReadWatchesRequest(this.nextId()));
+    const xml = await this.enqueueSend("", buildReadWatchesRequest(this.nextId()));
+    this.logger.info("Read watches response", xml);
+
     const values = parseWatchesResponse(xml);
+    this.logger.info("Parsed watch values", values);
 
     this.panel.webview.postMessage({
       type: "monitoring:values",
@@ -128,6 +147,12 @@ export class MonitoringSession {
       resource: mapping.resource,
       source: `${mapping.fbInstance}.${portName}`,
     };
+  }
+
+  private enqueueSend(resource: string, xml: string): Promise<string> {
+    const job = this.sendQueue.then(() => this.send(resource, xml));
+    this.sendQueue = job.then(() => undefined, () => undefined);
+    return job;
   }
 
   private async send(resource: string, xml: string): Promise<string> {
@@ -164,7 +189,7 @@ export class MonitoringSession {
         const buf = Buffer.concat(chunks, totalLen);
         if (buf.length < 3) return;
 
-        const lenXml = buf[2];
+        const lenXml = buf.readUInt16BE(1);
         if (buf.length < 3 + lenXml) return;
 
         cleanup();
@@ -188,6 +213,10 @@ export class MonitoringSession {
   private postError(err: unknown): void {
     const message = err instanceof Error ? err.message : String(err);
     this.logger.error("Monitoring error", err);
-    this.panel.webview.postMessage({ type: "monitoring:error", error: message });
+    try {
+      this.panel.webview.postMessage({ type: "monitoring:stopped" });
+    } catch {
+    // Panel can already be disposed.
+    }
   }
 }

@@ -37,9 +37,9 @@ export function buildPacket(resource: string, xml: string): Buffer {
  */
 export function parseResponse(data: Buffer): string {
   if (data.length < 3) return "Insufficient data";
-  if (data[0] !== 0x50 || data[1] !== 0x00) return "Invalid packet signature";
+  if (data[0] !== 0x50) return "Invalid packet signature";
 
-  const lenXml = data[2];
+  const lenXml = data.readUInt16BE(1);
   if (data.length < 3 + lenXml) return "Incomplete XML in response";
 
   return data.slice(3, 3 + lenXml).toString("utf-8");
@@ -168,21 +168,38 @@ export function parseWatchesResponse(xml: string): MonitoringValue[] {
   });
 
   const doc = parser.parse(xml);
-  const resources = asArray(doc?.Resource ?? doc?.Response?.Resource);
+
+  const resources = asArray(
+    doc?.Response?.Watches?.Resource ??
+    doc?.Response?.Resource ??
+    doc?.Watches?.Resource ??
+    doc?.Resource,
+  );
+
   const result: MonitoringValue[] = [];
 
   for (const resource of resources) {
+    const resourceName = resource?.name ?? resource?.Name ?? "";
+
     for (const fb of asArray(resource?.FB)) {
+      const fbName = fb?.name ?? fb?.Name;
+      if (!fbName) continue;
+
       for (const port of asArray(fb?.Port)) {
+        const portName = port?.name ?? port?.Name;
         const data = port?.Data;
-        if (!fb?.name || !port?.name || !data) continue;
+        if (!portName || !data) continue;
 
         result.push({
-          resource: resource.name || "",
-          fb: fb.name,
-          port: port.name,
-          value: String(data.value ?? ""),
-          forced: data.forced === true || data.forced === "true",
+          resource: resourceName,
+          fb: fbName,
+          port: portName,
+          value: String(data.value ?? data.Value ?? ""),
+          forced:
+            data.forced === true ||
+            data.forced === "true" ||
+            data.Forced === true ||
+            data.Forced === "true",
           timestamp: Date.now(),
         });
       }
