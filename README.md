@@ -55,3 +55,11 @@ OpenFB Plugin adds an interactive IEC 61499 Function Block Diagram (FBD) editor 
 ## Requirements
 
 - VS Code 1.85.0+
+
+## Development Team (v0.2.0)
+
+The current version of the plugin was significantly expanded, stabilized, and brought to production-ready state through the combined efforts of:
+
+- **Loushkin Felix Aleksandrovich** — *Technical lead, integration & stabilization.* Implemented per-block code generation, led the mass fix of critical parsing and saving bugs, and ensured architectural integrity through code review.
+- **Lombrozov Andrei Vladimirovich** — *SYS generation & monitoring.* Developed the "Create SYS from scratch" feature and implemented the real-time monitoring subsystem over the 4diac FORTE protocol (Watch, Trigger, Force).
+- **Astafiev Nikolai Georgievich** — *FBOOT generation & UI.* Fixed critical bugs in `.fboot` generation, normalized canvas coordinates, and contributed to debugging key plugin components.
