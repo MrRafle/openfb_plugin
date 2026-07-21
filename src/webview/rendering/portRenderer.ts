@@ -142,7 +142,7 @@ export function drawPorts(ctx: CanvasRenderingContext2D, node: any, hoveredPortI
     }
 
     if (p.monitoringValue !== undefined) {
-      ctx.fillStyle = p.monitoringForced ? "#ffb347" : "#7CFC00";
+      ctx.fillStyle = p.monitoringForced ? "#ffb347" : "#4da6ff"; 
       ctx.font = "bold 11px sans-serif";
       ctx.textAlign = p.direction === "input" ? "right" : "left";
       ctx.textBaseline = "middle";

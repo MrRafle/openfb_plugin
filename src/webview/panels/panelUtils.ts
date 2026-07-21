@@ -64,26 +64,33 @@ export function buildPortSectionHtml(options: PortBuilderOptions): string {
       }
     }
 
-    // OPC Mapping checkbox for data input ports (always at right edge)
+    // OPC Mapping checkbox for data input ports
     if (opcMappingSet && isDataInput) {
       const checked = opcMappingSet.has(port.name) ? "checked" : "";
       const disabledAttr = editable ? "" : "disabled";
-      contentHtml += `<label class="opc-mapping-label" title="OPC UA Mapping"><input type="checkbox" class="opc-mapping-checkbox" data-node-id="${nodeId}" data-port-name="${port.name}" ${checked} ${disabledAttr} /> OPC</label>`;
+      contentHtml += `<label class="opc-mapping-label" title="OPC UA Mapping" style="margin-left: auto;"><input type="checkbox" class="opc-mapping-checkbox" data-node-id="${nodeId}" data-port-name="${port.name}" ${checked} ${disabledAttr} /> OPC</label>`;
     }
 
     if (nodeId !== "START") {
-      contentHtml += `<button class="monitor-watch-btn" data-node-id="${nodeId}" data-port-name="${port.name}" title="Следить за значением">Watch</button>`;
+      contentHtml += `<div style="display: flex; flex-direction: column; gap: 4px; margin-top: 4px;">`;
+
+      contentHtml += `<div style="display: flex; gap: 4px;">`;
+      contentHtml += `<button class="monitor-watch-btn" data-node-id="${nodeId}" data-port-name="${port.name}" title="Следить за значением" style="flex: 0 0 55px; font-size: 11px; padding: 4px 0; border-radius: 3px; cursor: pointer; box-sizing: border-box; text-align: center;">Watch</button>`;
 
       if (port.kind === "event" && port.direction === "input") {
-        contentHtml += `<button class="monitor-trigger-btn" data-node-id="${nodeId}" data-port-name="${port.name}" title="Сымитировать событие">Trigger</button>`;
+        contentHtml += `<button class="monitor-trigger-btn" data-node-id="${nodeId}" data-port-name="${port.name}" title="Сымитировать событие" style="flex: 0 0 55px; font-size: 11px; padding: 4px 0; border-radius: 3px; cursor: pointer; box-sizing: border-box; text-align: center;">Trigger</button>`;
       }
-      
-      if (port.kind === "data" && port.direction === "input") {
-        contentHtml += `<input type="text" class="monitor-force-input" placeholder="Force" data-node-id="${nodeId}" data-port-name="${port.name}" style="width: 60px;" />`;
-        contentHtml += `<button class="monitor-force-btn" data-node-id="${nodeId}" data-port-name="${port.name}" title="Принудительно задать значение">Force</button>`;
-      }
-    }
+      contentHtml += `</div>`;
 
+      // Строка 2
+      if (port.kind === "data" && port.direction === "input") {
+        contentHtml += `<div style="display: flex; gap: 4px;">`;
+        contentHtml += `<input type="text" class="monitor-force-input" placeholder="Force" data-node-id="${nodeId}" data-port-name="${port.name}" style="flex: 0 0 40px !important; width: 40px !important; min-width: 40px !important; max-width: 40px !important; font-size: 11px; padding: 4px 4px; border: 1px solid rgba(128,128,128,0.3); border-radius: 3px; background: rgba(255,255,255,0.05); color: inherit; box-sizing: border-box;" />`;
+        contentHtml += `<button class="monitor-force-btn" data-node-id="${nodeId}" data-port-name="${port.name}" title="Принудительно задать значение" style="flex: 0 0 55px !important; width: 55px !important; min-width: 55px !important; max-width: 55px !important; font-size: 11px; padding: 4px 0; border-radius: 3px; cursor: pointer; box-sizing: border-box; text-align: center;">Force</button>`;
+        contentHtml += `</div>`;
+      }
+      contentHtml += `</div>`;
+    }
     contentHtml += "</div>";
   }
 

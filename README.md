@@ -4,36 +4,38 @@ OpenFB Plugin adds an interactive IEC 61499 Function Block Diagram (FBD) editor 
 
 ## Features
 
-- Opens and visualizes IEC 61499 projects from `.sys` files as interactive diagrams
-- Supports pan/zoom, selection, and block drag-and-drop
-- Creates connections between ports (event/data) with compatibility validation
-- Deletes blocks and connections (`Delete` key and context menu)
-- Allows editing block parameters and OPC UA mappings (marks inputs and outputs as publishable via an OPC UA server using a ForgeLogic-compatible format)
-- Saves project changes back to `.sys`
-- Generates `.fboot` and deploys to the OpenFB runtime
-- Shows logs in both Webview and Extension Output
-- During deployment, prompts to create a `.fboot` file if it is missing
-- When generating `.fboot`, asks for confirmation before overwriting existing files
+- Opens and visualizes IEC 61499 projects from `.sys` files as interactive diagrams.
+- Supports pan/zoom, selection, and block drag-and-drop.
+- Creates connections between ports (event/data) with compatibility validation.
+- Deletes blocks and connections (`Delete` key and context menu).
+- Allows editing block parameters and OPC UA mappings (marks inputs and outputs as publishable via an OPC UA server using a ForgeLogic-compatible format).
+- **Real-time Monitoring:** Connect to a running FORTE device to read port values (`Watch`), simulate events (`Trigger`), and force variable values (`Force`) directly from the VS Code interface.
+- **Live Block Search:** Instantly find blocks in the library with a dedicated search bar that auto-expands matching folders.
+- Saves project changes back to `.sys` with robust parsing (no more lost connections or missing ports after saving).
+- Generates `.fboot` and deploys to the OpenFB runtime.
+- Shows logs in both Webview and Extension Output.
+- During deployment, prompts to create a `.fboot` file if it is missing.
+- When generating `.fboot`, asks for confirmation before overwriting existing files.
 - Automatically refreshes the `Block Library` panel:
-  - after creating a new FB type
-  - after saving library path settings
-- Supports panel UI localization (`ru`/`en`) via the `openfb.uiLanguage` setting
-- After changing language in settings, button labels, tab labels, and canvas text are refreshed immediately in the open panel
-- The current version supports only one compute node in the hardware configuration
+  - after creating a new FB type.
+  - after saving library path settings.
+- Supports panel UI localization (`ru`/`en`) via the `openfb.uiLanguage` setting.
+- After changing language in settings, button labels, tab labels, and canvas text are refreshed immediately in the open panel.
+- *Note: The current version supports only one compute node in the hardware configuration.*
 
 ## Quick Start
 
 1. Install the extension in VS Code.
-2. In Explorer, right-click a `.sys` file.
-3. Select **OpenFB: Open project diagram**.
+2. **Creating a new project**: Press `Ctrl+Shift+P`, type `OpenFB: Create SYS project` (or `OpenFB: Создать sys проект`), and follow the prompts to generate a new `.sys` file from scratch.
+3. **Opening an existing project**: In the Explorer, right-click an existing `.sys` file and select **OpenFB: Open project diagram**.
 
 ## Settings
 
-- `openfb.fbLibraryPaths` - search paths for `.fbt` libraries
-- `openfb.host` - OpenFB runtime host
-- `openfb.port` - OpenFB runtime port
-- `openfb.deployTimeoutMs` - deployment timeout in milliseconds
-- `openfb.uiLanguage` - OpenFB panel UI language (`en` by default)
+- `openfb.fbLibraryPaths` - search paths for `.fbt` libraries.
+- `openfb.host` - OpenFB runtime host.
+- `openfb.port` - OpenFB runtime port.
+- `openfb.deployTimeoutMs` - deployment timeout in milliseconds.
+- `openfb.uiLanguage` - OpenFB panel UI language (`en` by default).
 
 ## Localization
 
@@ -41,15 +43,14 @@ OpenFB Plugin adds an interactive IEC 61499 Function Block Diagram (FBD) editor 
 - These strings depend on VS Code Display Language, not on `openfb.uiLanguage`.
 - `openfb.uiLanguage` controls only the OpenFB webview panel language and is applied immediately after saving settings.
 
-## Recent Changes
+## Recent Changes (v0.2.0)
 
+- **Added Real-time Monitoring:** Full integration with 4diac FORTE protocol (Watch, Trigger, Force).
+- **Added Live Search:** Instant filtering in the Block Library panel with auto-expanding folders.
+- **Fixed Critical Save/Parse Bugs:** Resolved issues where blocks lost their ports (turned into "ovals") after saving. Implemented fuzzy type matching for reliable model reloading.
+- **Fixed START Block Handling:** The virtual START block now correctly renders in the UI, and its connections are strictly read from/written to the `<Resource>` section, ensuring 100% compatibility with 4diac IDE and preventing XML duplication.
 - Updated `.fboot` generation/deployment dialogs with action confirmations.
-- Generation and deployment messages now show file names without full paths.
-- Fixed class name display for newly added library blocks.
 - Improved handling of `Type Library` paths for multiple `.sys` projects.
-- Added `package.json` localization via `package.nls*.json`.
-- Changed default OpenFB panel language to English (`en`).
-- Added immediate refresh of static panel labels and empty-canvas text after language change in settings.
 
 ## Requirements
 
